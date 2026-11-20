@@ -1,0 +1,35 @@
+# Render Blueprint for the API (https://render.com/docs/blueprint-spec).
+# The web console is deployed separately to Cloudflare Pages — see docs/DEPLOYMENT.md.
+services:
+  - type: web
+    name: sentinel-x-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL # runtime role (sentinel_app) — RLS enforced
+        sync: false
+      - key: MIGRATION_DATABASE_URL # owner role, used only by `alembic upgrade head`
+        sync: false
+      - key: RUN_MIGRATIONS_ON_START
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS # e.g. https://sentinel-x.pages.dev
+        sync: false
+      - key: REFRESH_COOKIE_SECURE
+        value: "true"
+      - key: REFRESH_COOKIE_SAMESITE
+        value: lax
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
+      - key: DB_POOL_SIZE
+        value: "3"
+      - key: DB_MAX_OVERFLOW
+        value: "2"

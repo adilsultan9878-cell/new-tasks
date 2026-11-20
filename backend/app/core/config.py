@@ -1,0 +1,124 @@
+"""Application settings, loaded from environment variables (and an optional .env file).
+
+Secrets are never hardcoded: every credential comes from the environment. In production the
+application refuses to start with a missing or placeholder JWT secret.
+"""
+
+from __future__ import annotations
+
+from functools import lru_cache
+from typing import Annotated, Literal
+
+from pydantic import Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+_PLACEHOLDER_SECRETS = {"", "change-me", "changeme", "CHANGE_ME_TO_A_LONG_RANDOM_STRING"}
+
+
+def normalize_database_url(url: str) -> str:
+    """Accept the URL formats Supabase/Render/Heroku hand out and pin the psycopg 3 driver."""
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://") :]
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://") :]
+    return url
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    # --- General -------------------------------------------------------------------------
+    app_name: str = "SENTINEL X — AEGIS NEXUS"
+    environment: Literal["development", "test", "production"] = "development"
+    log_level: str = "INFO"
+    api_prefix: str = "/api/v1"
+
+    # --- Database --------------------------------------------------------------------------
+    # Runtime connection. In production this should be a dedicated, non-superuser role so
+    # PostgreSQL Row-Level Security policies are enforced (see docs/SECURITY.md).
+    database_url: str = "sqlite:///./sentinel_dev.db"
+    # Optional privileged connection used only by Alembic migrations. Defaults to database_url.
+    migration_database_url: str | None = None
+    db_pool_size: int = 5
+    db_max_overflow: int = 5
+    db_echo: bool = False
+
+    # --- Auth ------------------------------------------------------------------------------
+    jwt_secret: str = Field(default="", repr=False)
+    jwt_algorithm: str = "HS256"
+    jwt_issuer: str = "sentinel-x"
+    jwt_audience: str = "sentinel-x-api"
+    access_token_ttl_minutes: int = 15
+    refresh_token_ttl_days: int = 14
+    # A rotated refresh token replayed within this window is treated as a benign race (two tabs
+    # refreshing at once) rather than theft. Set to 0 for strict reuse detection.
+    refresh_reuse_grace_seconds: int = 20
+    refresh_cookie_name: str = "sx_refresh"
+    refresh_cookie_secure: bool = False
+    refresh_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+    refresh_cookie_domain: str | None = None
+    password_min_length: int = 12
+    max_failed_logins: int = 5
+    lockout_minutes: int = 15
+    allow_registration: bool = True
+
+    # --- HTTP ------------------------------------------------------------------------------
+    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    rate_limit_enabled: bool = True
+    rate_limit_auth_per_minute: int = 10
+    # Refresh tokens are unguessable (384-bit), so this only guards against abuse; it must be
+    # generous enough for many users behind one NAT reloading pages.
+    rate_limit_refresh_per_minute: int = 120
+    rate_limit_default_per_minute: int = 300
+
+    @field_validator("database_url", "migration_database_url")
+    @classmethod
+    def _normalize_db_url(cls, value: str | None) -> str | None:
+        return normalize_database_url(value) if value else value
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [o.strip().rstrip("/") for o in value.split(",") if o.strip()]
+        return value
+
+    @model_validator(mode="after")
+    def _validate_security(self) -> Settings:
+        if self.environment == "production":
+            if self.jwt_secret in _PLACEHOLDER_SECRETS or len(self.jwt_secret) < 32:
+                raise ValueError(
+                    "JWT_SECRET must be set to a random value of at least 32 characters in production"
+                )
+            if self.database_url.startswith("sqlite"):
+                raise ValueError("SQLite is for local development only; set a PostgreSQL DATABASE_URL")
+            if not self.refresh_cookie_secure:
+                raise ValueError("REFRESH_COOKIE_SECURE must be true in production")
+            if "*" in self.cors_origins:
+                raise ValueError("Wildcard CORS origins are not allowed with credentialed requests")
+        if self.refresh_cookie_samesite == "none" and not self.refresh_cookie_secure:
+            raise ValueError("REFRESH_COOKIE_SAMESITE=none requires REFRESH_COOKIE_SECURE=true")
+        return self
+
+    @property
+    def is_sqlite(self) -> bool:
+        return self.database_url.startswith("sqlite")
+
+    @property
+    def effective_jwt_secret(self) -> str:
+        """Development falls back to a per-process random secret (tokens die on restart)."""
+        if self.jwt_secret and self.jwt_secret not in _PLACEHOLDER_SECRETS:
+            return self.jwt_secret
+        return _dev_secret()
+
+
+@lru_cache
+def _dev_secret() -> str:
+    import secrets
+
+    return secrets.token_urlsafe(48)
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
