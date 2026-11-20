@@ -98,3 +98,21 @@ def test_audit_log_is_append_only(app_engine, admin_engine, account_factory):
     # Even the table owner is stopped by the trigger.
     with pytest.raises(DBAPIError, match="append-only"), admin_engine.begin() as conn:
         conn.execute(text("UPDATE audit_logs SET action = 'tampered'"))
+
+
+def test_every_tenant_table_has_forced_rls_policy(app_engine, admin_engine):
+    """Guard rail: a new tenant table without RLS fails the build."""
+    from app.models import TENANT_TABLES
+
+    with admin_engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity, "
+                "EXISTS (SELECT 1 FROM pg_policies p "
+                "WHERE p.tablename = c.relname AND p.policyname = 'tenant_isolation') "
+                "FROM pg_class c WHERE c.relname = ANY(:t)"
+            ),
+            {"t": list(TENANT_TABLES)},
+        ).all()
+    assert {r[0] for r in rows} == set(TENANT_TABLES)
+    assert all(r[1] and r[2] and r[3] for r in rows), [r for r in rows if not (r[1] and r[2] and r[3])]

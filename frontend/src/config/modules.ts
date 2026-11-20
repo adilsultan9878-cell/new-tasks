@@ -1,4 +1,5 @@
 import {
+  Activity,
   Bot,
   Box,
   BrainCircuit,
@@ -110,6 +111,12 @@ export const MODULES: PlatformModule[] = [
   },
   // SENTINEL X
   {
+    key: 'events', name: 'Security Events', navName: 'Security Events', group: 'sentinel', icon: Activity, status: 'live', phase: 2,
+    path: 'events', permission: 'events:read',
+    summary: 'Real-time stream of security events from enrolled agents and analysts, with deterministic detections and triage.',
+    capabilities: ['Live WebSocket stream', 'De-duplication', 'Detection rules → alerts', 'Triage workflow'],
+  },
+  {
     key: 'ai-brain', name: 'AI Security Brain', group: 'sentinel', icon: BrainCircuit, status: 'planned', phase: 4,
     path: 'm/ai-brain',
     summary: 'Central orchestrator that normalises events, runs deterministic checks first, then consults specialised agents.',
@@ -147,10 +154,10 @@ export const MODULES: PlatformModule[] = [
   },
   // AEGIS ONE
   {
-    key: 'devices', name: 'Device Management', group: 'aegis', icon: MonitorSmartphone, status: 'planned', phase: 2,
-    path: 'm/devices',
-    summary: 'Enroll authorized devices with per-device credentials and the optional local security agent.',
-    capabilities: ['Enrollment tokens', 'Device authentication', 'Health & last-seen tracking', 'Revocation'],
+    key: 'devices', name: 'Device Management', navName: 'Devices', group: 'aegis', icon: MonitorSmartphone, status: 'live', phase: 2,
+    path: 'devices', permission: 'devices:read',
+    summary: 'Enroll authorized devices with one-time tokens and the local security agent; monitor health and push approved configuration.',
+    capabilities: ['Enrollment tokens', 'Per-device credentials', 'Live health & telemetry', 'Revocation'],
   },
   {
     key: 'vision', name: 'Computer Vision Security', navName: 'Computer Vision', group: 'aegis', icon: Cctv, status: 'planned', phase: 6,

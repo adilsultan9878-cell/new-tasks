@@ -175,6 +175,18 @@ tables, so nothing is exposed through Supabase's public REST endpoint.
 `frontend/public/_headers` applies the console's security headers (CSP, HSTS, framing) and
 `_redirects` provides SPA routing.
 
+### Real-time stream and agents in the cloud
+
+* The WebSocket endpoint `/api/v1/ws` works through all three paths: the Vite dev proxy, the
+  Docker nginx config, and the Pages Function (which passes `Upgrade: websocket` requests straight to
+  Render). Render supports WebSockets on the free plan; a sleeping instance drops the stream, and the
+  console reconnects automatically with back-off once the API wakes up.
+* Agents use the same public origin as the console:
+  `sentinel-agent enroll --server https://<project>.pages.dev --token sxe.…`
+  (or the Render URL directly). Only HTTPS is accepted for non-local servers.
+* The real-time hub and the offline-device sweeper run inside the API process. Keep a **single API
+  instance** until a shared message bus is added (see docs/ARCHITECTURE.md §7).
+
 ### Alternative: call the API directly (no proxy)
 
 Set `VITE_API_BASE_URL=https://<service>.onrender.com/api/v1`, add that origin to `connect-src`
@@ -205,6 +217,15 @@ on sub-domains of one custom domain (`app.example.com` / `api.example.com`, `Sam
 | `RUN_MIGRATIONS_ON_START` | `true` | container start-up only |
 | `FORWARDED_ALLOW_IPS` | `127.0.0.1` | proxies trusted for `X-Forwarded-For` |
 | `DB_POOL_SIZE` / `DB_MAX_OVERFLOW` | `5` / `5` | keep small on free database tiers |
+| `ENROLLMENT_TOKEN_MAX_HOURS` | `168` | upper bound for enrollment-token lifetime |
+| `DEVICE_OFFLINE_AFTER_SECONDS` | `180` | silence before the sweeper marks a device offline |
+| `DEVICE_SWEEP_INTERVAL_SECONDS` | `60` | how often the sweeper runs |
+| `AGENT_DEFAULT_HEARTBEAT_SECONDS` | `60` | initial agent heartbeat interval |
+| `RATE_LIMIT_AGENT_PER_MINUTE` | `120` | per device |
+| `INGEST_MAX_EVENTS_PER_BATCH` / `INGEST_MAX_RAW_BYTES` | `100` / `16384` | ingestion limits |
+| `EVENT_DEDUP_WINDOW_MINUTES` | `10` | duplicate-folding window |
+| `BRUTEFORCE_THRESHOLD` / `BRUTEFORCE_WINDOW_MINUTES` | `5` / `5` | brute-force detection rule |
+| `WS_PING_INTERVAL_SECONDS` / `WS_REVALIDATE_SECONDS` | `25` / `300` | WebSocket keep-alive and re-authorization |
 
 ---
 

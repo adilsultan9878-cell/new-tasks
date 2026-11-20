@@ -22,6 +22,11 @@ log = logging.getLogger("sentinel")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    import asyncio
+    import contextlib
+
+    from app.services import sweeper
+
     settings = get_settings()
     if not settings.jwt_secret:
         log.warning(
@@ -34,7 +39,13 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         settings.environment,
         settings.database_url.split("://", 1)[0],
     )
-    yield
+    sweep_task = asyncio.create_task(sweeper.run_forever(), name="device-sweeper")
+    try:
+        yield
+    finally:
+        sweep_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await sweep_task
 
 
 def create_app() -> FastAPI:

@@ -44,6 +44,25 @@ jobs:
         env:
           TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
 
+  agent:
+    name: Local agent (unit + safety tests)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ".[test]" ruff==0.17.6
+      - run: ruff check . && ruff format --check .
+      - run: python -m pytest -q
+      - run: sentinel-agent --version
+
   frontend:
     name: Frontend (lint, types, unit tests, build)
     runs-on: ubuntu-latest
@@ -65,7 +84,7 @@ jobs:
 
   e2e:
     name: End-to-end (Playwright)
-    needs: [backend, frontend]
+    needs: [backend, frontend, agent]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -79,7 +98,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Backend virtualenv
         working-directory: backend
-        run: python -m venv .venv && .venv/bin/pip install -r requirements.txt
+        run: python -m venv .venv && .venv/bin/pip install -r requirements.txt psutil
       - name: Frontend deps + browser
         working-directory: frontend
         run: npm ci && npx playwright install --with-deps chromium

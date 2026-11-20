@@ -9,6 +9,8 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorNotice } from '@/components/ui/Feedback'
 import { readPref, writePref } from '@/lib/storage'
 
+import { RealtimeProvider } from '@/realtime/RealtimeProvider'
+
 import { OrgProvider } from './OrgContext'
 import { useMemberships } from './queries'
 
@@ -39,7 +41,9 @@ export function OrgShell() {
     )
   return (
     <OrgProvider membership={membership}>
-      <AppShell memberships={memberships.data} />
+      <RealtimeProvider orgId={membership.organization.id}>
+        <AppShell memberships={memberships.data} />
+      </RealtimeProvider>
     </OrgProvider>
   )
 }

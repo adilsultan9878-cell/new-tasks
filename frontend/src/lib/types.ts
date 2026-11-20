@@ -70,6 +70,15 @@ export interface DashboardSummary {
   critical_alerts: number
   open_alerts_by_severity: CountBy[]
   network_activity_24h: { bucket: string; count: number }[]
+  recent_events: {
+    id: string
+    title: string
+    severity: string
+    category: string
+    device_name: string | null
+    occurrence_count: number
+    occurred_at: string
+  }[]
   recent_investigations: {
     id: string
     title: string
@@ -149,4 +158,110 @@ export interface SessionInfo {
   ip_address: string | null
   user_agent: string | null
   current: boolean
+}
+
+// ---------------------------------------------------------------- Phase 2: devices & events
+export type DeviceStatus = 'online' | 'offline' | 'degraded' | 'unknown' | 'decommissioned'
+
+export interface Device {
+  id: string
+  name: string
+  device_type: string
+  hostname: string | null
+  os: string | null
+  ip_address: string | null
+  mac_address: string | null
+  status: DeviceStatus
+  enrollment_status: 'pending' | 'enrolled' | 'revoked'
+  health_score: number | null
+  agent_version: string | null
+  enrolled_at: string | null
+  last_seen_at: string | null
+  is_simulated: boolean
+  created_at: string
+}
+
+export interface AgentConfig {
+  heartbeat_interval_seconds: number
+  collectors: ('system' | 'network' | 'ports')[]
+  thresholds: { cpu_percent: number; memory_percent: number; disk_percent: number }
+}
+
+export interface DeviceDetail extends Device {
+  telemetry: {
+    cpu_percent?: number
+    memory_percent?: number
+    disk_percent?: number
+    uptime_seconds?: number
+    process_count?: number
+    listening_ports?: number[]
+    interfaces?: { name: string; addresses: string[] }[]
+    reported_at?: string
+  }
+  config: AgentConfig
+  config_version: number
+  credential_rotated_at: string | null
+}
+
+export interface EnrollmentToken {
+  id: string
+  label: string
+  device_type: string
+  max_uses: number
+  use_count: number
+  expires_at: string
+  revoked_at: string | null
+  last_used_at: string | null
+  created_at: string
+  state: 'active' | 'expired' | 'exhausted' | 'revoked'
+}
+
+export interface EnrollmentTokenCreated extends EnrollmentToken {
+  token: string
+}
+
+export type Severity = 'info' | 'low' | 'medium' | 'high' | 'critical'
+
+export interface SecurityEvent {
+  id: string
+  device_id: string | null
+  device_name: string | null
+  source: string
+  category: string
+  event_type: string
+  severity: Severity
+  status: 'new' | 'triaged' | 'closed'
+  title: string
+  occurred_at: string
+  ingested_at: string
+  occurrence_count: number
+  last_occurred_at: string | null
+  is_simulated: boolean
+}
+
+export interface Alert {
+  id: string
+  event_id: string | null
+  title: string
+  description: string | null
+  severity: Severity
+  status: string
+  risk_score: number | null
+  detection_rule: string | null
+  created_at: string
+}
+
+export interface SecurityEventDetail extends SecurityEvent {
+  description: string | null
+  raw: Record<string, unknown>
+  normalized: Record<string, unknown>
+  alerts: Alert[]
+}
+
+export interface IngestResult {
+  accepted: number
+  deduplicated: number
+  rejected: { index: number; reason: string }[]
+  alerts_created: number
+  event_ids: string[]
 }

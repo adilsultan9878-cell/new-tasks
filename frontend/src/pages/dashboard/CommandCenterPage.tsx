@@ -32,6 +32,8 @@ import { relativeTime, titleCase } from '@/lib/format'
 import type { DashboardSummary, SystemHealth } from '@/lib/types'
 import { useOrg } from '@/org/OrgContext'
 import { qk } from '@/org/queries'
+import { useRealtime } from '@/realtime/RealtimeProvider'
+import { SeverityBadge } from '@/components/ui/StatusBadges'
 
 import { DeviceHealthBar, KpiTile, SeverityBars } from './widgets'
 
@@ -47,7 +49,7 @@ function useNow(intervalMs = 15_000) {
 }
 
 export function CommandCenterPage() {
-  const { orgId, membership } = useOrg()
+  const { orgId, membership, can } = useOrg()
   const now = useNow()
   const summary = useQuery({
     queryKey: qk.dashboard(orgId),
@@ -105,7 +107,7 @@ export function CommandCenterPage() {
             <Panel title="Threat risk distribution" description="Open alerts by severity">
               {d.open_alerts_by_severity.every((s) => s.count === 0) ? (
                 <EmptyState icon={ShieldCheck} title="No open alerts">
-                  Alerts are raised by the detection engine once events flow in (Phase 2).
+                  Detection rules raise alerts for high/critical events and brute-force patterns.
                 </EmptyState>
               ) : (
                 <SeverityBars data={d.open_alerts_by_severity} />
@@ -114,8 +116,8 @@ export function CommandCenterPage() {
 
             <Panel title="Device health" description={d.device_health_avg !== null ? `Average health score ${d.device_health_avg}/100` : 'Status of enrolled devices'}>
               {d.devices_total === 0 ? (
-                <EmptyState icon={MonitorSmartphone} title="No enrolled devices">
-                  Device enrollment and the local security agent arrive in Phase 2.
+                <EmptyState icon={MonitorSmartphone} title="No enrolled devices" action={<Link to={`/org/${orgId}/devices`} className="text-xs text-accent hover:underline">Enroll a device →</Link>}>
+                  Install the local security agent on an authorized machine.
                 </EmptyState>
               ) : (
                 <DeviceHealthBar data={d.devices_by_status} total={d.devices_total} />
@@ -129,7 +131,7 @@ export function CommandCenterPage() {
             <Panel className="lg:col-span-2" title="Network activity" description="Network-category events per hour · last 24 hours">
               {d.network_activity_24h.every((b) => b.count === 0) ? (
                 <EmptyState icon={Network} title="No network events in the last 24 hours">
-                  The authorized-scope network monitor ships with NEXUS ZERO (Phase 3).
+                  Agents report new listening ports here; the full network monitor ships with NEXUS ZERO (Phase 3).
                 </EmptyState>
               ) : (
                 <Suspense fallback={<Skeleton className="h-52" />}>
@@ -140,11 +142,30 @@ export function CommandCenterPage() {
             <GettingStarted summary={d} />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
+          <div className="grid gap-4 lg:grid-cols-3 lg:gap-5">
+            <Panel title="Recent security events" description="Latest activity from agents and analysts" actions={can('events:read') ? <Link to={`/org/${orgId}/events`} className="text-xs text-accent hover:underline">View all</Link> : undefined}>
+              {d.recent_events.length === 0 ? (
+                <EmptyState icon={Activity} title="No events yet">
+                  Events stream in live from enrolled agents.
+                </EmptyState>
+              ) : (
+                <ul className="-my-1 divide-y divide-line">
+                  {d.recent_events.map((e) => (
+                    <li key={e.id} className="flex items-center gap-2.5 py-2 text-sm">
+                      <SeverityBadge severity={e.severity} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-fg">{e.title}</span>
+                        <span className="text-xs text-fg-subtle">{e.device_name ?? titleCase(e.category)} · {relativeTime(e.occurred_at, now)}{e.occurrence_count > 1 ? ` · ×${e.occurrence_count}` : ''}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
             <Panel title="Recent investigations" description="Latest NEXUS ZERO investigations">
               {d.recent_investigations.length === 0 ? (
                 <EmptyState icon={FileSearch} title="No investigations yet">
-                  URL, phishing, hash and IP investigations are part of Phase 3.
+                  URL, phishing, hash and IP investigations arrive with NEXUS ZERO (Phase 3).
                 </EmptyState>
               ) : (
                 <ul className="divide-y divide-line">
@@ -208,8 +229,16 @@ const RLS_LABEL: Record<string, { text: string; tone: 'ok' | 'warn' | 'idle' }> 
   unknown: { text: 'Unknown', tone: 'warn' },
 }
 
+const LIVE_LABEL = {
+  live: { text: 'Connected', tone: 'ok' },
+  connecting: { text: 'Connecting', tone: 'warn' },
+  reconnecting: { text: 'Reconnecting', tone: 'warn' },
+  offline: { text: 'Not connected', tone: 'idle' },
+} as const
+
 export function SystemHealthPanel({ system }: { system: SystemHealth }) {
   const rls = RLS_LABEL[system.database.row_level_security] ?? RLS_LABEL.unknown!
+  const live = LIVE_LABEL[useRealtime().status]
   return (
     <Panel title="System health" description={`API v${system.version} · ${system.environment}`}>
       <ul className="-my-2 divide-y divide-line">
@@ -221,7 +250,7 @@ export function SystemHealthPanel({ system }: { system: SystemHealth }) {
           tone={system.database.status === 'ok' ? 'ok' : 'critical'}
         />
         <HealthRow icon={ShieldCheck} label="Row-Level Security" value={rls.text} tone={rls.tone} />
-        <HealthRow icon={Zap} label="Realtime stream" value={<span className="text-fg-subtle">Phase 2</span>} tone="idle" />
+        <HealthRow icon={Zap} label="Realtime stream" value={live.text} tone={live.tone} />
       </ul>
     </Panel>
   )
@@ -232,7 +261,7 @@ function GettingStarted({ summary }: { summary: DashboardSummary }) {
   const steps = [
     { done: true, label: 'Create your organization', detail: 'Isolated tenant ready', to: null as string | null },
     { done: summary.members > 1, label: 'Add your team', detail: summary.members > 1 ? `${summary.members} members` : 'Assign analyst & viewer roles', to: can('members:read') ? `/org/${orgId}/members` : null },
-    { done: summary.devices_total > 0, label: 'Enroll your first device', detail: 'Local agent · Phase 2', to: `/org/${orgId}/m/devices` },
+    { done: summary.devices_total > 0, label: 'Enroll your first device', detail: summary.devices_total > 0 ? `${summary.devices_total} enrolled` : 'Install the local security agent', to: can('devices:read') ? `/org/${orgId}/devices` : null },
     { done: false, label: 'Run a threat investigation', detail: 'NEXUS ZERO · Phase 3', to: `/org/${orgId}/m/phishing` },
   ]
   const completed = steps.filter((s) => s.done).length

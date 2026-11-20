@@ -52,6 +52,6 @@ def system_health(db: Session) -> SystemHealth:
         version=__version__,
         environment=get_settings().environment,
         database=database,
-        realtime="planned",  # WebSocket event stream ships in Phase 2
+        realtime="available",  # WebSocket stream at /api/v1/ws
         uptime_seconds=int(time.monotonic() - STARTED_AT),
     )

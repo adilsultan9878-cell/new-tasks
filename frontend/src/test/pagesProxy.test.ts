@@ -22,6 +22,15 @@ describe('Cloudflare Pages /api proxy', () => {
     expect(new TextDecoder().decode(init!.body as ArrayBuffer)).toBe('{"email":"a@b.c"}')
   })
 
+  it('passes WebSocket upgrades through to the API', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 200 }))
+    const request = new Request('https://sentinel.pages.dev/api/v1/ws', { headers: { Upgrade: 'websocket', Origin: 'https://sentinel.pages.dev' } })
+    await onRequest({ request, env: { API_ORIGIN: 'https://api.example.onrender.com' } })
+    const forwarded = fetchMock.mock.calls[0]![0] as Request
+    expect(forwarded.url).toBe('https://api.example.onrender.com/api/v1/ws')
+    expect(forwarded.headers.get('Upgrade')).toBe('websocket')
+  })
+
   it('fails closed when API_ORIGIN is missing', async () => {
     const res: Response = await onRequest({ request: new Request('https://x.pages.dev/api/v1/health'), env: {} })
     expect(res.status).toBe(502)

@@ -17,6 +17,7 @@ const base: DashboardSummary = {
   critical_alerts: 0,
   open_alerts_by_severity: ['critical', 'high', 'medium', 'low', 'info'].map((key) => ({ key, count: 0 })),
   network_activity_24h: [],
+  recent_events: [],
   recent_investigations: [],
   recent_agent_runs: [],
   agent_runs_24h_by_status: [],

@@ -80,9 +80,25 @@ flowchart LR
 | Email verification / password reset | requires an email provider | Phase 10 |
 | MFA (TOTP / WebAuthn) | | Planned (post Phase 5) |
 | Distributed rate limiting (Redis) | | Planned (scale-out) |
-| Device authentication & signed telemetry | per-device credentials, HMAC | Phase 2 |
+| Device authentication | per-device credentials over HTTPS, rotation, revocation | ✔ (Phase 2) |
+| Signed requests / mTLS for agents | defence in depth beyond TLS + bearer credential | Planned |
 | SSRF-safe fetchers for URL analysis | deny private/link-local ranges, size/time limits, no redirects to internal hosts | Phase 3 |
 | Response engine safety | allow-list, approvals, rollback plans, emergency stop | Phase 5 |
+
+## Phase 2 additions: devices, agent and real-time stream
+
+| Threat | Example | Control (implemented, tested) |
+|---|---|---|
+| Spoofed device | attacker posts events as a device | per-device 256-bit secret, only SHA-256 stored, constant-time compare; revoke/rotate; generic 401 |
+| Cross-tenant device access | swapping the organization part of a credential | the organization in the credential selects the RLS tenant *before* lookup; a device id from another org is simply invisible (`test_device_token_cannot_cross_tenants`) |
+| Stolen enrollment token | reused to enroll rogue machines | short expiry (≤ 7 days), max-use counter with row lock, revocable, every attempt audited (denied attempts included) |
+| Remote code execution via the agent | server or MITM tells the agent to run something | the agent has no execution primitive at all (AST scan test forbids `subprocess`, `os.system`, `eval`, `exec`, …); config is an allow-list on **both** sides; HTTPS with certificate verification is mandatory for remote servers |
+| Payload abuse / storage exhaustion | huge or endless events | ≤ 100 events per batch, `raw` ≤ 16 KB, bounded telemetry lists, per-device rate limit, de-duplication |
+| Event timestamp manipulation | back-dated or future events to hide activity | rejected outside −7 days / +5 minutes; `ingested_at` is always server time |
+| Cross-site WebSocket hijacking | evil page opens `/api/v1/ws` with the victim's cookies | the stream ignores cookies: the access token must be sent in the first message, and the Origin must be an allowed console origin |
+| Token leakage via URLs/logs | token in `?token=` | never placed in URLs; first-frame authentication only |
+| Stale stream after logout/removal | revoked user keeps receiving events | session family and membership re-checked every 5 minutes (closes with 4401/4403) |
+| Leaking rolled-back data | broadcast before commit | broadcasts are queued on the DB session and published only after `COMMIT` |
 
 ## Reporting a vulnerability
 

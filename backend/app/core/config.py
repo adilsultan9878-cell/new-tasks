@@ -71,6 +71,25 @@ class Settings(BaseSettings):
     rate_limit_refresh_per_minute: int = 120
     rate_limit_default_per_minute: int = 300
 
+    # --- Devices, agents & ingestion (Phase 2) ---------------------------------------------
+    enrollment_token_max_hours: int = 168
+    device_offline_after_seconds: int = 180
+    device_sweep_interval_seconds: int = 60
+    agent_default_heartbeat_seconds: int = 60
+    rate_limit_agent_per_minute: int = 120  # per device
+    ingest_max_events_per_batch: int = 100
+    ingest_max_raw_bytes: int = 16_384  # per event
+    event_dedup_window_minutes: int = 10
+    event_max_clock_skew_seconds: int = 300
+    event_max_age_days: int = 7
+    bruteforce_threshold: int = 5
+    bruteforce_window_minutes: int = 5
+
+    # --- Realtime ----------------------------------------------------------------------------
+    ws_auth_timeout_seconds: int = 10
+    ws_ping_interval_seconds: int = 25
+    ws_revalidate_seconds: int = 300
+
     @field_validator("database_url", "migration_database_url")
     @classmethod
     def _normalize_db_url(cls, value: str | None) -> str | None:

@@ -11,6 +11,12 @@ export const qk = {
   audit: (orgId: string, params: Record<string, unknown>) => ['audit', orgId, params] as const,
   notifications: ['notifications'] as const,
   sessions: ['sessions'] as const,
+  devices: (orgId: string) => ['devices', orgId] as const,
+  device: (orgId: string, id: string) => ['devices', orgId, id] as const,
+  tokens: (orgId: string) => ['enrollment-tokens', orgId] as const,
+  events: (orgId: string, params: Record<string, unknown>) => ['events', orgId, params] as const,
+  event: (orgId: string, id: string) => ['events', orgId, 'detail', id] as const,
+  alerts: (orgId: string) => ['alerts', orgId] as const,
 }
 
 export function useMemberships(enabled = true) {

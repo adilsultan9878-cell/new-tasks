@@ -36,6 +36,21 @@ export function setAccessToken(token: string | null): void {
   accessToken = token
 }
 
+export function getAccessToken(): string | null {
+  return accessToken
+}
+
+/** WebSocket endpoint derived from the API base (relative bases use the page's own origin). */
+export function websocketUrl(): string {
+  const base = /^https?:\/\//.test(API_BASE) ? API_BASE : `${window.location.origin}${API_BASE}`
+  return `${base.replace(/^http/, 'ws')}/ws`
+}
+
+/** Absolute API base URL, e.g. for agent install commands. */
+export function absoluteApiBase(): string {
+  return /^https?:\/\//.test(API_BASE) ? API_BASE : `${window.location.origin}${API_BASE}`
+}
+
 export function setSessionExpiredHandler(handler: (() => void) | null): void {
   onSessionExpired = handler
 }

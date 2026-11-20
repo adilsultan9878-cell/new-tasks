@@ -35,6 +35,19 @@ DEVICE_TYPES = ("workstation", "server", "mobile", "iot", "camera", "sensor_hub"
 DEVICE_STATUSES = ("online", "offline", "degraded", "unknown", "decommissioned")
 ENROLLMENT_STATUSES = ("pending", "enrolled", "revoked")
 EVENT_STATUSES = ("new", "triaged", "closed")
+EVENT_CATEGORIES = (
+    "network",
+    "auth",
+    "malware",
+    "phishing",
+    "vision",
+    "iot",
+    "system",
+    "agent",
+    "policy",
+    "other",
+)
+EVENT_SOURCES = ("agent", "manual", "integration", "camera", "sensor", "network", "system")
 ALERT_STATUSES = ("open", "acknowledged", "resolved", "false_positive")
 INCIDENT_STATUSES = ("open", "investigating", "contained", "eradicated", "recovered", "closed")
 INVESTIGATION_STATUSES = ("pending", "running", "completed", "failed")
@@ -94,12 +107,42 @@ class Device(UUIDPrimaryKey, Timestamps, Base):
     risk_score: Mapped[int | None] = mapped_column(Integer)
     agent_version: Mapped[str | None] = mapped_column(String(32))
     credential_hash: Mapped[str | None] = mapped_column(String(255))  # device auth secret (hashed)
+    credential_rotated_at: Mapped[datetime | None]
     enrolled_at: Mapped[datetime | None]
     last_seen_at: Mapped[datetime | None]
     location: Mapped[dict[str, Any]] = mapped_column(default=dict)  # site/zone/x,y,z for the twin
     tags: Mapped[list[Any]] = mapped_column(default=list)
     attributes: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    # Latest approved telemetry reported by the local agent (CPU, memory, disk, ports, ...).
+    telemetry: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    # Desired agent configuration (allow-listed keys only) and its version.
+    config: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    config_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     is_simulated: Mapped[bool] = _simulated()
+
+
+class EnrollmentToken(UUIDPrimaryKey, Base):
+    """One-time (or limited-use) secret an administrator hands to a device to enroll it."""
+
+    __tablename__ = "enrollment_tokens"
+    __table_args__ = (
+        UniqueConstraint("token_hash"),
+        CheckConstraint("max_uses BETWEEN 1 AND 1000", name="max_uses"),
+        CheckConstraint("use_count >= 0", name="use_count"),
+        Index("ix_enrollment_tokens_org_created", "organization_id", "created_at"),
+    )
+
+    organization_id: Mapped[uuid.UUID] = _org_fk()
+    label: Mapped[str] = mapped_column(String(120))
+    token_hash: Mapped[str] = mapped_column(String(64))
+    device_type: Mapped[str] = mapped_column(String(24), default="workstation")
+    max_uses: Mapped[int] = mapped_column(Integer, default=1)
+    use_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    expires_at: Mapped[datetime]
+    revoked_at: Mapped[datetime | None]
+    last_used_at: Mapped[datetime | None]
+    created_by: Mapped[uuid.UUID | None] = _user_fk()
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 
 class Camera(UUIDPrimaryKey, Timestamps, Base):
@@ -184,6 +227,9 @@ class SecurityEvent(UUIDPrimaryKey, Base):
     normalized: Mapped[dict[str, Any]] = mapped_column(default=dict)
     occurred_at: Mapped[datetime] = mapped_column(default=utcnow)
     ingested_at: Mapped[datetime] = mapped_column(default=utcnow)
+    # Duplicates (same fingerprint inside the de-duplication window) are folded into one row.
+    occurrence_count: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    last_occurred_at: Mapped[datetime | None]
     is_simulated: Mapped[bool] = _simulated()
 
 
@@ -464,6 +510,7 @@ class Report(UUIDPrimaryKey, Timestamps, Base):
 # Tables protected by the tenant_isolation RLS policy (organization_id = current org).
 TENANT_TABLES: tuple[str, ...] = (
     "devices",
+    "enrollment_tokens",
     "cameras",
     "sensors",
     "network_assets",

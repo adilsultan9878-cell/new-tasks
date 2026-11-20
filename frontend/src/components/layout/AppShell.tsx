@@ -4,6 +4,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 
 import { cn } from '@/lib/cn'
 import { readPref, writePref } from '@/lib/storage'
+import { useRealtime } from '@/realtime/RealtimeProvider'
 import type { Membership } from '@/lib/types'
 
 import { CommandPalette } from './CommandPalette'
@@ -87,6 +88,7 @@ export function AppShell({ memberships }: { memberships: Membership[] }) {
             <kbd className="hidden rounded border border-line-strong px-1.5 py-0.5 font-mono text-[10px] sm:inline">{isMac ? '⌘' : 'Ctrl'} K</kbd>
           </button>
           <div className="ml-auto flex items-center gap-1">
+            <LiveIndicator />
             <Notifications />
             <UserMenu />
           </div>
@@ -97,5 +99,21 @@ export function AppShell({ memberships }: { memberships: Membership[] }) {
       </div>
       <CommandPalette open={paletteOpen} onClose={closePalette} memberships={memberships} />
     </div>
+  )
+}
+
+function LiveIndicator() {
+  const { status } = useRealtime()
+  const label = { live: 'Live', connecting: 'Connecting', reconnecting: 'Reconnecting', offline: 'Offline' }[status]
+  const tone = { live: 'bg-ok animate-pulse-dot', connecting: 'bg-medium', reconnecting: 'bg-medium', offline: 'bg-fg-subtle' }[status]
+  return (
+    <span
+      className="mr-1 hidden items-center gap-2 rounded-full border border-line px-2.5 py-1 text-[11px] font-medium text-fg-muted sm:flex"
+      title={status === 'live' ? 'Real-time updates are streaming' : 'Real-time stream is not connected; data refreshes periodically'}
+      role="status"
+    >
+      <span className={cn('size-1.5 rounded-full', tone)} aria-hidden />
+      {label}
+    </span>
   )
 }

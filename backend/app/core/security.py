@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -105,3 +106,33 @@ def new_refresh_token() -> str:
 def hash_token(token: str) -> str:
     """Refresh tokens are high-entropy, so a fast hash is appropriate; only the hash is stored."""
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+# --- Device & enrollment credentials ------------------------------------------------------------
+# Format: <prefix>.<organization uuid hex>.<record uuid hex>.<secret>
+# The IDs are not secret; they let the API resolve the tenant before looking the record up, so
+# Row-Level Security stays in force. Only SHA-256 of the high-entropy secret is stored.
+DEVICE_TOKEN_PREFIX = "sxd"
+ENROLLMENT_TOKEN_PREFIX = "sxe"
+
+
+def make_scoped_token(prefix: str, org_id: uuid.UUID, record_id: uuid.UUID) -> tuple[str, str]:
+    """Return (token, sha256_of_secret)."""
+    secret = secrets.token_urlsafe(32)
+    return f"{prefix}.{org_id.hex}.{record_id.hex}.{secret}", hash_token(secret)
+
+
+def parse_scoped_token(prefix: str, token: str) -> tuple[uuid.UUID, uuid.UUID, str] | None:
+    parts = token.strip().split(".")
+    if len(parts) != 4 or parts[0] != prefix or not (20 <= len(parts[3]) <= 128):
+        return None
+    try:
+        return uuid.UUID(hex=parts[1]), uuid.UUID(hex=parts[2]), parts[3]
+    except ValueError:
+        return None
+
+
+def secret_matches(secret: str, stored_hash: str | None) -> bool:
+    if not stored_hash:
+        return False
+    return hmac.compare_digest(hash_token(secret), stored_hash)

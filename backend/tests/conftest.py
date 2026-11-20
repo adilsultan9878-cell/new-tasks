@@ -185,3 +185,43 @@ def pytest_sessionfinish(session, exitstatus) -> None:
         url = make_url(MIGRATION_URL)
         with create_engine(url.set(database="postgres"), isolation_level="AUTOCOMMIT").connect() as conn:
             conn.execute(text(f'DROP DATABASE IF EXISTS "{url.database}" WITH (FORCE)'))
+
+
+AGENT = "/api/v1/agent"
+
+
+def facts(hostname: str = "ws-01", **extra: Any) -> dict[str, Any]:
+    return {"hostname": hostname, "os": "Windows 11", "agent_version": "0.2.0", **extra}
+
+
+class Fleet:
+    """An organization with an owner and helpers to enroll devices through the real agent API."""
+
+    def __init__(self, owner: Account, name: str = "Fleet Org"):
+        self.owner = owner
+        self.org_id = owner.create_org(name)["organization"]["id"]
+        self.agent = make_client()
+
+    def token(self, **body: Any) -> dict[str, Any]:
+        payload = {"label": "Laptops", **body}
+        resp = self.owner.post(f"/api/v1/organizations/{self.org_id}/enrollment-tokens", json=payload)
+        assert resp.status_code == 201, resp.text
+        return resp.json()
+
+    def enroll(self, hostname: str = "ws-01", token: str | None = None) -> dict[str, Any]:
+        token = token or self.token()["token"]
+        resp = self.agent.post(f"{AGENT}/enroll", json={"enrollment_token": token, "device": facts(hostname)})
+        assert resp.status_code == 201, resp.text
+        return resp.json()
+
+    def device_post(self, device_token: str, path: str, body: Any = None):
+        return self.agent.post(
+            f"{AGENT}{path}",
+            json=body if body is not None else {},
+            headers={"Authorization": f"Bearer {device_token}"},
+        )
+
+
+@pytest.fixture
+def fleet(account_factory) -> Fleet:
+    return Fleet(account_factory("owner"))

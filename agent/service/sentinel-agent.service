@@ -1,0 +1,18 @@
+# systemd *user* unit for the SENTINEL X agent.
+# Install: cp sentinel-agent.service ~/.config/systemd/user/ && systemctl --user enable --now sentinel-agent
+[Unit]
+Description=SENTINEL X local security agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/sentinel-agent run
+Restart=on-failure
+RestartSec=30
+# Exit code 3 means "credential revoked": do not restart in a loop.
+RestartPreventExitStatus=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

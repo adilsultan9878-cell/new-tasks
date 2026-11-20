@@ -26,6 +26,16 @@ class RecentInvestigation(APIModel):
     created_at: datetime
 
 
+class RecentEvent(APIModel):
+    id: uuid.UUID
+    title: str
+    severity: str
+    category: str
+    device_name: str | None
+    occurrence_count: int
+    occurred_at: datetime
+
+
 class RecentAgentRun(APIModel):
     id: uuid.UUID
     agent_name: str
@@ -62,6 +72,7 @@ class DashboardSummary(APIModel):
     critical_alerts: int
     open_alerts_by_severity: list[CountBy]
     network_activity_24h: list[TimeBucket]
+    recent_events: list[RecentEvent]
     recent_investigations: list[RecentInvestigation]
     recent_agent_runs: list[RecentAgentRun]
     agent_runs_24h_by_status: list[CountBy]

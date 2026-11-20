@@ -16,6 +16,12 @@ export async function onRequest({ request, env }) {
   const incoming = new URL(request.url)
   const target = new URL(incoming.pathname + incoming.search, env.API_ORIGIN)
 
+  // WebSocket upgrades (/api/v1/ws) are passed straight through; the API authenticates the
+  // first message and checks the Origin header against CORS_ORIGINS.
+  if ((request.headers.get('Upgrade') || '').toLowerCase() === 'websocket') {
+    return fetch(new Request(target.toString(), request))
+  }
+
   const headers = new Headers(request.headers)
   headers.delete('host')
   // Replace any client-supplied forwarding header with the address Cloudflare observed.

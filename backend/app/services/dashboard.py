@@ -24,6 +24,7 @@ from app.schemas.dashboard import (
     CountBy,
     DashboardSummary,
     RecentAgentRun,
+    RecentEvent,
     RecentInvestigation,
     TimeBucket,
 )
@@ -105,6 +106,25 @@ def build_summary(db: Session, org_id: uuid.UUID) -> DashboardSummary:
     )
     alerts_by_severity = [CountBy(key=s, count=int(by_sev.get(s, 0))) for s in SEVERITY_ORDER]
 
+    recent_events = [
+        RecentEvent(
+            id=e.id,
+            title=e.title,
+            severity=e.severity,
+            category=e.category,
+            device_name=name,
+            occurrence_count=e.occurrence_count,
+            occurred_at=e.occurred_at,
+        )
+        for e, name in db.execute(
+            select(SecurityEvent, Device.name)
+            .outerjoin(Device, Device.id == SecurityEvent.device_id)
+            .where(*real_events)
+            .order_by(SecurityEvent.occurred_at.desc())
+            .limit(6)
+        ).all()
+    ]
+
     investigations = db.scalars(
         select(Investigation)
         .where(Investigation.organization_id == org_id)
@@ -153,6 +173,7 @@ def build_summary(db: Session, org_id: uuid.UUID) -> DashboardSummary:
         critical_alerts=int(by_sev.get("critical", 0)),
         open_alerts_by_severity=alerts_by_severity,
         network_activity_24h=network_activity,
+        recent_events=recent_events,
         recent_investigations=[RecentInvestigation.model_validate(i) for i in investigations],
         recent_agent_runs=[RecentAgentRun.model_validate(r) for r in agent_runs],
         agent_runs_24h_by_status=runs_by_status,

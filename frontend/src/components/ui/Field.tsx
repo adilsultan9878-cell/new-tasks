@@ -3,8 +3,17 @@ import { forwardRef, useId, useState, type InputHTMLAttributes, type ReactNode, 
 
 import { cn } from '@/lib/cn'
 
+/** Full width unless the caller sets an explicit width (avoids conflicting Tailwind width classes). */
+function widthFor(className?: string): string {
+  return /(^|\s)(sm:|md:|lg:)?w-/.test(className ?? '') ? '' : 'w-full'
+}
+
+function heightFor(className?: string): string {
+  return /(^|\s)h-/.test(className ?? '') ? '' : 'h-10'
+}
+
 const control =
-  'w-full rounded-lg border border-line-strong bg-ink-850 px-3 text-sm text-fg placeholder:text-fg-subtle transition-colors focus:border-accent/60 focus:bg-ink-800 focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60 aria-[invalid=true]:border-critical/60 aria-[invalid=true]:focus:ring-critical/20'
+  'rounded-lg border border-line-strong bg-ink-850 px-3 text-sm text-fg placeholder:text-fg-subtle transition-colors focus:border-accent/60 focus:bg-ink-800 focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60 aria-[invalid=true]:border-critical/60 aria-[invalid=true]:focus:ring-critical/20'
 
 interface FieldProps {
   label: string
@@ -43,7 +52,7 @@ export function Field({ label, error, hint, children, labelAside }: FieldProps) 
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }>(
   function Input({ className, invalid, ...props }, ref) {
-    return <input ref={ref} aria-invalid={invalid || undefined} className={cn(control, 'h-10', className)} {...props} />
+    return <input ref={ref} aria-invalid={invalid || undefined} className={cn(control, widthFor(className), heightFor(className), className)} {...props} />
   },
 )
 
@@ -66,7 +75,7 @@ export function PasswordInput(props: InputHTMLAttributes<HTMLInputElement> & { i
 
 export function Select({ className, invalid, children, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { invalid?: boolean }) {
   return (
-    <select aria-invalid={invalid || undefined} className={cn(control, 'h-10 appearance-none bg-[length:16px] bg-[right_10px_center] bg-no-repeat pr-9', className)}
+    <select aria-invalid={invalid || undefined} className={cn(control, widthFor(className), heightFor(className), 'appearance-none bg-[length:16px] bg-[right_10px_center] bg-no-repeat pr-9', className)}
       style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa6b6' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")" }}
       {...props}>
       {children}
@@ -75,5 +84,5 @@ export function Select({ className, invalid, children, ...props }: SelectHTMLAtt
 }
 
 export function Textarea({ className, invalid, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement> & { invalid?: boolean }) {
-  return <textarea aria-invalid={invalid || undefined} className={cn(control, 'min-h-[88px] py-2.5', className)} {...props} />
+  return <textarea aria-invalid={invalid || undefined} className={cn(control, widthFor(className), 'min-h-[88px] py-2.5', className)} {...props} />
 }

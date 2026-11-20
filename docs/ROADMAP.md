@@ -2,7 +2,7 @@
 
 Legend: ✅ implemented and covered by automated tests · 🟡 partially implemented · ⬜ pending
 
-## Phase 1 — Foundation ✅ (current release, v0.1.0)
+## Phase 1 — Foundation ✅ (v0.1.0)
 
 | Feature | Status | Evidence |
 |---|---|---|
@@ -28,13 +28,27 @@ Legend: ✅ implemented and covered by automated tests · 🟡 partially impleme
 | Email verification, password reset, email invitations | ⬜ | needs an email provider (Phase 10) |
 | Organization deletion / ownership transfer flow | ⬜ | intentionally deferred (needs re-auth + grace period) |
 
-## Phase 2 — Security Event Engine ⬜
+## Phase 2 — Security Event Engine ✅ (v0.2.0)
 
-- Device enrollment tokens and per-device credentials (`devices.credential_hash`)
-- Event ingestion API with schema validation, size limits, fingerprint de-duplication
-- Python local security agent (register, authenticate, approved telemetry, health, safe removal — no remote command execution)
-- WebSocket real-time stream per organization (JWT + membership on connect)
-- Device Management module UI
+| Feature | Status | Evidence |
+|---|---|---|
+| Enrollment tokens (label, device type, max uses, expiry; shown once, stored hashed; revocable) | ✅ | `tests/test_devices.py`, `DevicesPage.test.tsx` |
+| Device enrollment → per-device credential `sxd.<org>.<device>.<secret>` (SHA-256 stored, rotatable) | ✅ | `tests/test_devices.py`, `tests/test_agent_integration.py` |
+| Tenant-safe device auth (org resolved from the credential before lookup, so RLS stays on) | ✅ | `test_device_token_cannot_cross_tenants` |
+| Heartbeats with bounded telemetry, transparent health score, online/degraded status | ✅ | `test_heartbeat_updates_telemetry_health_and_delivers_config` |
+| Allow-listed agent configuration pushed from the console (versioned) | ✅ | `test_config_is_an_allow_list`, agent `test_safety.py` |
+| Device revoke (console) and unenroll (agent); revoked agents stop | ✅ | backend + agent integration + e2e |
+| Background sweeper marks silent devices offline and records events; recovery on next heartbeat | ✅ | `test_sweeper_marks_silent_devices_offline_and_heartbeat_recovers` |
+| Event ingestion API (agents + analysts): validation, size/batch limits, clock-skew/age checks | ✅ | `tests/test_events.py` |
+| De-duplication (fingerprint window, occurrence counter) and ECS-style normalization | ✅ | `test_duplicates_fold_into_one_event` |
+| Deterministic detection rules → alerts → notifications for responders (severity threshold, brute force) | ✅ | `test_severity_rule_…`, `test_bruteforce_rule_…` |
+| Event triage (new → triaged → closed) with audit trail; read-only alert list | ✅ | `test_manual_events_and_triage_rbac` |
+| WebSocket stream `/api/v1/ws`: first-message auth, origin check, tenant fan-out after commit, periodic re-validation | ✅ | `tests/test_realtime.py`, `RealtimeProvider.test.tsx` |
+| Python local agent: enroll, run, status, rotate, unenroll; collectors; local detections; offline spool; logs | ✅ | `agent/tests/*`, `tests/test_agent_integration.py`, `e2e/devices.spec.ts` |
+| Console: Devices page, device detail (telemetry, ports, config push, revoke), Security Events page, live indicator, toasts | ✅ | component tests + e2e |
+| WebSocket through Docker nginx and the Cloudflare Pages proxy | 🟡 | nginx verified with Docker Compose; Pages passthrough unit-tested, not yet on a live Cloudflare account |
+| Windows Task Scheduler / systemd service setup for the agent | 🟡 | documented in `agent/README.md`; agent itself is tested on Linux and in CI on Windows |
+| Cross-instance realtime (Redis / Postgres LISTEN-NOTIFY) | ⬜ | single API instance today |
 
 ## Phase 3 — NEXUS ZERO ⬜
 

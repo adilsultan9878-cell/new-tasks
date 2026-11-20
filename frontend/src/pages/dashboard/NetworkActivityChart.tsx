@@ -33,7 +33,7 @@ export default function NetworkActivityChart({ data }: { data: { bucket: string;
             <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#677386', fontSize: 11 }} interval={3} />
             <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: '#677386', fontSize: 11 }} domain={[0, (max: number) => Math.max(4, max)]} />
             <Tooltip content={ActivityTooltip} cursor={{ stroke: 'rgb(148 163 184 / 0.35)', strokeWidth: 1 }} />
-            <Area type="monotone" dataKey="count" stroke="#22d3ee" strokeWidth={2} fill="url(#net-fill)" activeDot={{ r: 4, stroke: '#090c11', strokeWidth: 2, fill: '#22d3ee' }} />
+            <Area isAnimationActive={false} type="monotone" dataKey="count" stroke="#22d3ee" strokeWidth={2} fill="url(#net-fill)" activeDot={{ r: 4, stroke: '#090c11', strokeWidth: 2, fill: '#22d3ee' }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
