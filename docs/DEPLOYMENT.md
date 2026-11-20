@@ -18,7 +18,7 @@ Requirements: [Python 3.12](https://www.python.org/downloads/) (tick *Add python
 ### 1. Backend (terminal 1)
 
 ```powershell
-git clone https://github.com/adilsultan9878-cell/sentinel-x-aegis-nexus.git
+git clone https://github.com/adilsultan9878-cell/new-tasks.git sentinel-x-aegis-nexus
 cd sentinel-x-aegis-nexus\backend
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1

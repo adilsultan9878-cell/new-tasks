@@ -55,7 +55,7 @@ You need Python 3.11+ (3.12 recommended), Node.js 20+ (22 LTS recommended) and G
 **Terminal 1: API**
 
 ```powershell
-git clone https://github.com/adilsultan9878-cell/sentinel-x-aegis-nexus.git
+git clone https://github.com/adilsultan9878-cell/new-tasks.git sentinel-x-aegis-nexus
 cd sentinel-x-aegis-nexus\backend
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
