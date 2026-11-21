@@ -165,7 +165,7 @@ export function CommandCenterPage() {
             <Panel title="Recent investigations" description="Latest NEXUS ZERO investigations">
               {d.recent_investigations.length === 0 ? (
                 <EmptyState icon={FileSearch} title="No investigations yet">
-                  URL, phishing, hash and IP investigations arrive with NEXUS ZERO (Phase 3).
+                  Investigate a URL, email, file hash, IP or domain from the NEXUS ZERO modules.
                 </EmptyState>
               ) : (
                 <ul className="divide-y divide-line">
@@ -262,7 +262,7 @@ function GettingStarted({ summary }: { summary: DashboardSummary }) {
     { done: true, label: 'Create your organization', detail: 'Isolated tenant ready', to: null as string | null },
     { done: summary.members > 1, label: 'Add your team', detail: summary.members > 1 ? `${summary.members} members` : 'Assign analyst & viewer roles', to: can('members:read') ? `/org/${orgId}/members` : null },
     { done: summary.devices_total > 0, label: 'Enroll your first device', detail: summary.devices_total > 0 ? `${summary.devices_total} enrolled` : 'Install the local security agent', to: can('devices:read') ? `/org/${orgId}/devices` : null },
-    { done: false, label: 'Run a threat investigation', detail: 'NEXUS ZERO · Phase 3', to: `/org/${orgId}/m/phishing` },
+    { done: summary.recent_investigations.length > 0, label: 'Run a threat investigation', detail: 'NEXUS ZERO · Phishing & URL', to: `/org/${orgId}/phishing` },
   ]
   const completed = steps.filter((s) => s.done).length
   return (

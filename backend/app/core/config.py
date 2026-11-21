@@ -85,6 +85,17 @@ class Settings(BaseSettings):
     bruteforce_threshold: int = 5
     bruteforce_window_minutes: int = 5
 
+    # --- Threat intelligence (Phase 3) ------------------------------------------------------
+    # Optional API keys. Without them the related providers report "not configured" — results
+    # never pretend a source was consulted.
+    abusech_auth_key: str = Field(default="", repr=False)  # URLhaus, MalwareBazaar, ThreatFox
+    abuseipdb_api_key: str = Field(default="", repr=False)
+    virustotal_api_key: str = Field(default="", repr=False)
+    nvd_api_key: str = Field(default="", repr=False)  # optional: raises NVD rate limits
+    intel_http_timeout_seconds: float = 8.0
+    intel_offline: bool = False  # disable all outbound intel calls (air-gapped labs)
+    rate_limit_investigations_per_minute: int = 20
+
     # --- Realtime ----------------------------------------------------------------------------
     ws_auth_timeout_seconds: int = 10
     ws_ping_interval_seconds: int = 25

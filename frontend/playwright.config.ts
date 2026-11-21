@@ -30,6 +30,8 @@ export default defineConfig({
         ENVIRONMENT: 'development',
         JWT_SECRET: 'e2e-only-secret-not-for-production-use-0123456789',
         RATE_LIMIT_AUTH_PER_MINUTE: '200',
+        // Deterministic CI: no calls to third-party intelligence services.
+        INTEL_OFFLINE: 'true',
       },
       timeout: 60_000,
     },

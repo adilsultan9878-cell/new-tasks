@@ -100,6 +100,19 @@ flowchart LR
 | Stale stream after logout/removal | revoked user keeps receiving events | session family and membership re-checked every 5 minutes (closes with 4401/4403) |
 | Leaking rolled-back data | broadcast before commit | broadcasts are queued on the DB session and published only after `COMMIT` |
 
+## Phase 3 additions: threat intelligence and network monitor
+
+| Threat | Example | Control (implemented, tested) |
+|---|---|---|
+| SSRF through investigations | "investigate" `http://169.254.169.254/` or an internal host | the subject is never requested; the intel client only talks HTTPS to allow-listed provider hosts, without redirects |
+| Malicious XML upload | billion-laughs / XXE in an "Nmap report" | parsed with `defusedxml` (entities rejected), 5 MB and 4,096-host limits |
+| Unauthorized scanning | importing or targeting someone else's network | the platform has no scanner; imports keep only hosts inside declared scopes; scopes ≤ /16, public ranges require an audited attestation |
+| Hostile content from intel sources | script in a returned description or link | React escapes all text; external links are `https`-only and open with `rel="noopener noreferrer nofollow"` |
+| Abuse / quota exhaustion of provider keys | scripted investigations | per-user investigation rate limit (20/min), KEV refresh throttled to once per 10 minutes |
+| Leaking API keys | keys in code, logs or the browser | keys only in server environment variables; never returned by the API (only "configured: yes/no") |
+| Privacy of analysed files | uploading confidential documents | files are hashed in the browser; only the SHA-256 is sent |
+| Automation overruling analysts | an investigation flipping a watchlist verdict | analyst-set indicators are never modified by automated results |
+
 ## Reporting a vulnerability
 
 Please do not open public issues for security problems. Email the maintainer privately with steps

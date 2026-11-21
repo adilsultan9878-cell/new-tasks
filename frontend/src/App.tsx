@@ -13,6 +13,11 @@ import { SettingsPage } from '@/pages/account/SettingsPage'
 import { CommandCenterPage } from '@/pages/dashboard/CommandCenterPage'
 import { DevicesPage } from '@/pages/devices/DevicesPage'
 import { EventsPage } from '@/pages/events/EventsPage'
+import { FileHashPage } from '@/pages/intel/FileHashPage'
+import { NetworkPage } from '@/pages/intel/NetworkPage'
+import { PhishingPage } from '@/pages/intel/PhishingPage'
+import { ThreatIntelPage } from '@/pages/intel/ThreatIntelPage'
+import { VulnerabilitiesPage } from '@/pages/intel/VulnerabilitiesPage'
 import { ModulePage } from '@/pages/modules/ModulePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { CreateOrganizationPage } from '@/pages/onboarding/CreateOrganizationPage'
@@ -51,6 +56,11 @@ export const routes = [
           { index: true, element: <CommandCenterPage /> },
           { path: 'devices', element: <DevicesPage /> },
           { path: 'events', element: <EventsPage /> },
+          { path: 'threat-intel', element: <ThreatIntelPage /> },
+          { path: 'phishing', element: <PhishingPage /> },
+          { path: 'file-hash', element: <FileHashPage /> },
+          { path: 'vulnerabilities', element: <VulnerabilitiesPage /> },
+          { path: 'network', element: <NetworkPage /> },
           { path: 'organization', element: <OrganizationPage /> },
           { path: 'members', element: <MembersPage /> },
           { path: 'audit', element: <AuditLogPage /> },

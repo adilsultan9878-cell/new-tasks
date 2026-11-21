@@ -28,6 +28,10 @@ PERMISSIONS: dict[str, str] = {
     "integrations:manage": "Configure external integrations and workflows",
     "reports:read": "View reports",
     "reports:manage": "Generate and manage reports",
+    "intel:read": "View threat intelligence, indicators and vulnerabilities",
+    "intel:manage": "Manage the indicator watchlist and refresh vulnerability feeds",
+    "network:read": "View network assets and authorized scopes",
+    "network:manage": "Manage authorized scopes and import network scans",
 }
 
 _READ = [p for p in PERMISSIONS if p.endswith(":read")]
@@ -59,6 +63,8 @@ ROLES: dict[str, dict[str, object]] = {
             "responses:propose",
             "evidence:manage",
             "reports:manage",
+            "intel:manage",
+            "network:manage",
         ],
     },
     "viewer": {

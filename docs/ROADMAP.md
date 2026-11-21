@@ -50,14 +50,25 @@ Legend: ✅ implemented and covered by automated tests · 🟡 partially impleme
 | Windows Task Scheduler / systemd service setup for the agent | 🟡 | documented in `agent/README.md`; agent itself is tested on Linux and in CI on Windows |
 | Cross-instance realtime (Redis / Postgres LISTEN-NOTIFY) | ⬜ | single API instance today |
 
-## Phase 3 — NEXUS ZERO ⬜
+## Phase 3 — NEXUS ZERO ✅ (v0.3.0)
 
-- URL & phishing analysis (deterministic checks, lookalike domains, SPF/DKIM/DMARC header parsing)
-- File hash look-ups and static metadata (files never executed)
-- IP / domain reputation from legitimate public sources, with attribution
-- NVD CVE + CISA KEV synchronisation into `vulnerability_records`
-- Authorized-scope network monitor (Nmap/Zeek ingestion; private scopes only)
-- Investigation records with verified findings separated from AI assessments
+| Feature | Status | Evidence |
+|---|---|---|
+| Investigations API (URL, domain, IP, file hash, email) with provenance: every finding has a source and a kind (intel / deterministic / context) | ✅ | `tests/test_intel.py`, `InvestigationView.test.tsx` |
+| SSRF-safe intelligence client: only allow-listed provider hosts, HTTPS only, no redirects, size limit; the subject is never fetched | ✅ | `test_ssrf_guard_only_allows_intel_hosts`, `test_url_heuristics_without_any_keys_are_honest` |
+| URL & phishing heuristics (brand impersonation and look-alikes incl. HBL, Meezan, JazzCash, Easypaisa, NADRA, FBR; punycode; IP hosts; `@` tricks; risky TLDs; shorteners; executable downloads) | ✅ | `test_lookalike_detection`, e2e `intel.spec.ts` |
+| Email header analysis (SPF/DKIM/DMARC, Reply-To and Return-Path mismatch, display-name spoofing, risky attachments, links analysed not opened) | ✅ | `test_email_header_analysis` |
+| Domain intelligence: RDAP via IANA bootstrap (newly registered / unregistered), DNS over HTTPS | ✅ | live-verified (google.com → 1997) + mocked tests |
+| IP intelligence: precise private/reserved classification, RDAP ownership, AbuseIPDB (key) | ✅ | `test_ip_investigations` (live-verified 8.8.8.8 → GOGL) |
+| File hashes: MalwareBazaar (key), VirusTotal (key); in-browser SHA-256 (file never uploaded) | ✅ | `test_hash_investigations`, File & Hash page |
+| URLhaus URL/host reputation (key) | ✅ | `test_urlhaus_listing_makes_it_malicious_and_raises_an_alert` |
+| Honest results: unconfigured/unavailable sources are listed; "no known threat" instead of "safe" | ✅ | `test_hash_without_sources_is_unknown_not_clean` |
+| Risk scoring and verdicts; malicious/suspicious results raise events → alerts → notifications | ✅ | tests + e2e |
+| Indicator watchlist (analyst verdicts are never overridden by automation) | ✅ | `test_watchlist_match` |
+| Vulnerability intelligence: CISA KEV sync (1,790 entries live), NVD enrichment with 7-day cache, search, ransomware filter | ✅ | `test_kev_sync_search_and_nvd_enrichment` (live-verified) |
+| Network Security Monitor: authorized scopes (≤ /16, public ranges need attestation), Nmap XML import (defusedxml), out-of-scope hosts discarded, exposed/risky service events, agent ports feed the inventory | ✅ | `tests/test_network.py`, e2e |
+| Optional provider keys tested with real accounts | 🟡 | adapters are unit-tested with recorded responses; live keys not yet configured |
+| Zeek / pcap ingestion | ⬜ | planned with the Phase 9 hardening work |
 
 ## Phase 4 — AI Brain ⬜
 

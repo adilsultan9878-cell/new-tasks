@@ -18,9 +18,9 @@ and **human-approved** automated defense. It is built phase by phase. Every feat
 is implemented end to end and covered by automated tests. Nothing in the UI is a mock or a fake
 counter.
 
-> **Status: Phase 2 (Security Event Engine) complete — v0.2.0.** Phase 1 (Foundation) shipped in
-> v0.1.0; Phase 3 (NEXUS ZERO threat intelligence) is next. See [docs/ROADMAP.md](docs/ROADMAP.md)
-> for the full list of completed and pending features.
+> **Status: Phase 3 (NEXUS ZERO threat intelligence) complete — v0.3.0.** Phases 1 (Foundation)
+> and 2 (Security Event Engine) shipped in v0.1.0 and v0.2.0; Phase 4 (AI Security Brain) is next.
+> See [docs/ROADMAP.md](docs/ROADMAP.md) for the full list of completed and pending features.
 
 ## What works today
 
@@ -37,6 +37,12 @@ counter.
 | 🛰️ **Local security agent** | A cross-platform Python agent (`sentinel-agent`). It reports CPU, memory, disk, uptime, network interfaces and listening ports. It detects resource exhaustion and new listening ports, and escalates well-known backdoor ports. It queues events while offline. It **cannot run commands**, and a test enforces that. See [agent/README.md](agent/README.md). |
 | 📡 **Event ingestion and detection** | Events are validated, size-limited, normalized and de-duplicated. Deterministic rules (high/critical severity, brute-force logins) raise alerts and notify responders. Events go through a triage workflow, and devices that go silent are marked offline by a background job. |
 | ⚡ **Live updates** | A WebSocket stream keeps the dashboard, devices and events current without reloading, and shows live alert toasts. The token travels in the first message, never in the URL. The connection is re-authorized every 5 minutes. |
+| 🎣 **Phishing & URL Analyzer** | Analyses links and full email headers without ever opening them. It checks brand impersonation and look-alikes (PayPal, Microsoft, HBL, Meezan, JazzCash, Easypaisa, NADRA, FBR and more), punycode, raw-IP hosts, `@` tricks, risky TLDs, shorteners and disguised executables. For email it checks SPF/DKIM/DMARC, Reply-To and Return-Path mismatches, display-name spoofing and risky attachments. |
+| 🌐 **Threat Intelligence** | IP and domain investigations use RDAP (registration age and ownership via the IANA bootstrap), DNS over HTTPS, and optionally URLhaus, AbuseIPDB and VirusTotal. It also keeps an indicator watchlist; automated results never overwrite an analyst's verdict. |
+| 🧬 **File & Hash Analyzer** | Hash look-ups in MalwareBazaar and VirusTotal. Files are hashed **in your browser** and never uploaded. |
+| 🐞 **Vulnerability Intelligence** | Syncs the CISA Known Exploited Vulnerabilities catalogue (1,790 CVEs) and enriches CVEs on demand from NIST NVD (CVSS, CWE, references). Includes search and a ransomware filter. |
+| 🛰️ **Network Security Monitor** | You declare the scopes you are authorized to assess (≤ /16, and public ranges need an attestation), then import Nmap XML; out-of-scope hosts are discarded. Risky or new exposed services raise events, and agents' listening ports feed the inventory. The platform itself never scans. |
+| 🧾 **Explainable results** | Every finding shows its source and whether it is verified intelligence or a deterministic check. Each investigation lists the sources consulted, not configured or unavailable, plus a timeline. With no evidence the verdict is "No known threat found", never "safe". Malicious results raise alerts automatically. |
 | 🗺️ **Roadmap pages** | Modules that are not built yet show what they will do and which phase delivers them. They contain no fake buttons. |
 
 ## Architecture at a glance
@@ -107,15 +113,29 @@ heartbeat raises a **High** alert for a new listening port commonly used by back
 agent, run `sentinel-agent unenroll --purge` and then `pip uninstall sentinel-x-agent`. Background
 service setup (Windows Task Scheduler, systemd) is in [agent/README.md](agent/README.md).
 
+## Threat-intelligence API keys (optional, free)
+
+NVD, CISA KEV, RDAP and DNS work without any key. These providers add more coverage when you set
+their keys in `backend/.env` (or as Render environment variables):
+
+| Variable | Provider | Sign up |
+|---|---|---|
+| `ABUSECH_AUTH_KEY` | URLhaus + MalwareBazaar | https://auth.abuse.ch/ |
+| `ABUSEIPDB_API_KEY` | AbuseIPDB | https://www.abuseipdb.com/register |
+| `VIRUSTOTAL_API_KEY` | VirusTotal | https://www.virustotal.com/gui/join-us |
+| `NVD_API_KEY` (optional) | NIST NVD rate limits | https://nvd.nist.gov/developers/request-an-api-key |
+
+The Threat Intelligence page shows which sources are configured.
+
 ## Testing
 
 | Suite | Command | Covers |
 |---|---|---|
-| Backend (SQLite) | `cd backend; pytest` | health, auth, organizations, RBAC, tenant isolation, enrollment, device auth, ingestion, detection rules, sweeper, WebSocket, real agent ↔ live server (69 tests) |
-| Backend (PostgreSQL + RLS) | `$env:TEST_DATABASE_URL="postgresql://postgres:<pw>@localhost:5432/postgres"; pytest` | everything above, run as the least-privileged DB role, plus RLS proofs for every tenant table (75 tests) |
+| Backend (SQLite) | `cd backend; pytest` | health, auth, organizations, RBAC, tenant isolation, enrollment, device auth, ingestion, detection rules, sweeper, WebSocket, real agent ↔ live server, investigations (URL/domain/IP/hash/email), SSRF guard, KEV/NVD, scopes, Nmap import (97 tests) |
+| Backend (PostgreSQL + RLS) | `$env:TEST_DATABASE_URL="postgresql://postgres:<pw>@localhost:5432/postgres"; pytest` | everything above, run as the least-privileged DB role, plus RLS proofs for every tenant table (103 tests) |
 | Agent | `cd agent; python -m pytest` | config allow-list, no-command-execution guard, collectors, detectors, offline spool, revocation (19 tests; CI runs them on Linux **and Windows**) |
-| Frontend unit/component | `cd frontend; npm test` | API client, session refresh, sidebar RBAC, dashboard, devices, events, live WebSocket client, Pages proxy (23 tests) |
-| End-to-end (Playwright) | `cd frontend; npx playwright install chromium; npx playwright test` | sign-up → org → dashboard → sign-in again; tenant isolation and RBAC; **real agent enrolled from the console, shown live, then revoked**; high-severity report → alert toast and notification (5 tests) |
+| Frontend unit/component | `cd frontend; npm test` | API client, session refresh, sidebar RBAC, dashboard, devices, events, live WebSocket client, Pages proxy, investigation view (26 tests) |
+| End-to-end (Playwright) | `cd frontend; npx playwright install chromium; npx playwright test` | sign-up → org → dashboard → sign-in again; tenant isolation and RBAC; **real agent enrolled from the console, shown live, then revoked**; high-severity report → alert toast; phishing analysis → alert; Nmap import respects scopes (7 tests, intel providers offline for determinism) |
 | Lint / types | `ruff check .` · `npm run lint` · `npm run typecheck` | |
 
 CI runs all of the above on every push ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
@@ -140,14 +160,18 @@ verified intelligence.
 
 ## Screens
 
+| Phishing analysis | Vulnerability intelligence |
+|---|---|
+| ![Phishing analysis](docs/images/phishing-analysis.png) | ![Vulnerabilities](docs/images/vulnerabilities.png) |
+
+| Network monitor | Security events |
+|---|---|
+| ![Network monitor](docs/images/network-monitor.png) | ![Security events](docs/images/security-events.png) |
+
 | Devices (live) | Device detail |
 |---|---|
 | ![Devices](docs/images/devices.png) | ![Device detail](docs/images/device-detail.png) |
 
-| Security events | Users & Roles |
+| Users & Roles | Sign in |
 |---|---|
-| ![Security events](docs/images/security-events.png) | ![Users and roles](docs/images/users-and-roles.png) |
-
-| Sign in |
-|---|
-| ![Sign in](docs/images/login.png) |
+| ![Users and roles](docs/images/users-and-roles.png) | ![Sign in](docs/images/login.png) |

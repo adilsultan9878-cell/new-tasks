@@ -225,3 +225,38 @@ class Fleet:
 @pytest.fixture
 def fleet(account_factory) -> Fleet:
     return Fleet(account_factory("owner"))
+
+
+class IntelMock:
+    """Routes intelligence HTTP calls to canned responses; records every call."""
+
+    def __init__(self):
+        self.routes: dict[tuple[str, str], Any] = {}
+        self.calls: list[str] = []
+
+    def on(self, host: str, path_prefix: str, response: Any, status: int = 200):
+        self.routes[(host, path_prefix)] = (status, response)
+
+    def handler(self, request):
+        import httpx
+
+        self.calls.append(str(request.url))
+        for (host, prefix), (status, body) in sorted(self.routes.items(), key=lambda kv: -len(kv[0][1])):
+            if request.url.host == host and request.url.path.startswith(prefix):
+                payload = body(request) if callable(body) else body
+                return httpx.Response(status, json=payload)
+        return httpx.Response(503, json={"error": "no mock"})
+
+
+@pytest.fixture(autouse=True)
+def intel_mock():
+    """No test ever reaches the real internet: every intel call goes to this mock."""
+    import httpx
+
+    from app.intel import client, providers
+
+    mock = IntelMock()
+    client.set_transport(httpx.MockTransport(mock.handler))
+    providers._bootstrap.clear()
+    yield mock
+    client.set_transport(None)

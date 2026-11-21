@@ -57,6 +57,10 @@ export function RealtimeProvider({ orgId, children }: { orgId: string; children:
           // High/critical events always raise an alert, so alerts are the single source of toasts.
           push({ tone: 'critical', title: `${String(d.severity ?? '').charAt(0).toUpperCase()}${String(d.severity ?? '').slice(1)} alert`, body: String(d.title ?? '') })
           break
+        case 'investigation.completed':
+          void queryClient.invalidateQueries({ queryKey: ['investigations', orgId] })
+          void queryClient.invalidateQueries({ queryKey: qk.dashboard(orgId) })
+          break
         case 'device.updated':
           void queryClient.invalidateQueries({ queryKey: ['devices', orgId] })
           void queryClient.invalidateQueries({ queryKey: ['enrollment-tokens', orgId] })

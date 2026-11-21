@@ -101,11 +101,11 @@ sequenceDiagram
 |---|---|---|---|---|
 | 1 | Command Center | Overview | 1 | **Live** |
 | 2 | AI Security Brain | SENTINEL X | 4 | Designed |
-| 3 | Threat Intelligence Center | NEXUS ZERO | 3 | Designed |
-| 4 | Network Security Monitor | NEXUS ZERO | 3 | Designed |
-| 5 | Vulnerability Intelligence | NEXUS ZERO | 3 | Designed |
-| 6 | Phishing & URL Analyzer | NEXUS ZERO | 3 | Designed |
-| 7 | File & Hash Analyzer | NEXUS ZERO | 3 | Designed |
+| 3 | Threat Intelligence Center | NEXUS ZERO | 3 | **Live** |
+| 4 | Network Security Monitor | NEXUS ZERO | 3 | **Live** |
+| 5 | Vulnerability Intelligence | NEXUS ZERO | 3 | **Live** |
+| 6 | Phishing & URL Analyzer | NEXUS ZERO | 3 | **Live** |
+| 7 | File & Hash Analyzer | NEXUS ZERO | 3 | **Live** |
 | 8 | Computer Vision Security | AEGIS ONE | 6 | Designed |
 | 9 | IoT Device Security | AEGIS ONE | 6 | Designed |
 | 10 | Digital Twin | AEGIS ONE | 7 | Designed |
@@ -226,7 +226,37 @@ sequenceDiagram
 | 3 | Analyst submits URL / hash / IP | strict parsers, SSRF-safe fetchers (no private IPs) | `investigations`, `threat_indicators`, `evidence` |
 | 6 | MQTT (per-device credentials, TLS) and OpenCV worker | topic ACLs, schema | `sensors`, `cameras`, `security_events` |
 
-## 8. Repository layout
+## 8. NEXUS ZERO threat intelligence (implemented — Phase 3)
+
+```mermaid
+flowchart LR
+    subject[Analyst submits URL / email / hash / IP / domain] --> validate[Validate & normalise]
+    validate --> heur[Deterministic checks<br/>look-alikes · structure · headers]
+    validate --> intel{Allow-listed intel client}
+    intel --> rdap[RDAP via IANA bootstrap]
+    intel --> dns[DNS over HTTPS]
+    intel --> uh[URLhaus / MalwareBazaar*]
+    intel --> aip[AbuseIPDB*]
+    intel --> vt[VirusTotal*]
+    heur --> score[Risk score & verdict]
+    rdap & dns & uh & aip & vt --> score
+    watch[Org watchlist] --> score
+    score --> inv[(Investigation<br/>findings · sources · timeline)]
+    score -->|malicious / suspicious| ev[Security event → rules → alert → notifications]
+    inv --> ioc[(Threat indicators)]
+```
+`*` optional, enabled by an API key. CVE data comes from the CISA KEV feed (bulk) and NVD (on demand, cached 7 days).
+
+| Rule | Implementation |
+|---|---|
+| Never touch the subject | URLs, domains and IPs are only *looked up*; the HTTP client refuses any host not on the provider allow-list (RDAP servers are added only from IANA's bootstrap file), HTTPS only, no redirects, 8 MB cap. |
+| Provenance | Each finding records `source` and `kind`: `intel` (an external source or the org's watchlist said so), `heuristic` (a local deterministic rule) or `context` (neutral fact). The UI shows them in separate columns. |
+| Honesty | Every source is listed as consulted, not configured, unavailable or skipped. Without positive evidence the verdict is "No known threat found", never "safe". |
+| Scoring | Sum of finding weights capped at 100; any high/critical `intel` finding sets the floor at 85 and the verdict to malicious; ≥ 70 malicious, ≥ 35 suspicious. |
+| AI | Not used in Phase 3. `ai_assessment` is reserved for Phase 4 and will be labelled. |
+| Network scope | The platform never scans. Operators import their own Nmap XML; hosts outside declared scopes are discarded; scopes larger than /16 (/48 IPv6) are refused; public ranges need an explicit authorization attestation (audited). |
+
+## 9. Repository layout
 
 ```
 sentinel-x-aegis-nexus/
@@ -234,6 +264,8 @@ sentinel-x-aegis-nexus/
 │   ├── app/
 │   │   ├── api/                 deps.py (auth, tenancy, RBAC) · v1/routes/*
 │   │   ├── core/                config · security · errors · logging · middleware · rate_limit
+│   │   ├── intel/               NEXUS ZERO: client (allow-list) · providers · url · domain · ip ·
+│   │   │                        hashes · email_headers · lookalike · vulns (KEV/NVD) · findings
 │   │   ├── db/                  declarative base · session + RLS tenant binding
 │   │   ├── models/              identity.py · operations.py (27 tables)
 │   │   ├── rbac/                catalog.py (roles → permissions)
@@ -262,7 +294,7 @@ sentinel-x-aegis-nexus/
 └── .github/workflows/ci.yml
 ```
 
-## 9. Technology choices
+## 10. Technology choices
 
 | Concern | Choice | Why |
 |---|---|---|

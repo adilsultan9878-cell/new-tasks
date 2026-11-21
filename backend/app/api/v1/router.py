@@ -8,6 +8,8 @@ from app.api.v1.routes import (
     devices,
     events,
     health,
+    intel,
+    network,
     notifications,
     organizations,
     realtime,
@@ -24,3 +26,5 @@ api_router.include_router(devices.router)
 api_router.include_router(events.router)
 api_router.include_router(agent.router)
 api_router.include_router(realtime.router)
+api_router.include_router(intel.router)
+api_router.include_router(network.router)

@@ -270,6 +270,11 @@ def heartbeat(db: Session, device: Device, body: HeartbeatRequest) -> Device:
     if body.ip_address:
         device.ip_address = body.ip_address
     device.health_score = compute_health(telemetry, device.config or {})
+    from app.services.network import record_agent_ports
+
+    record_agent_ports(
+        db, device.organization_id, device.id, device.ip_address, telemetry.get("listening_ports")
+    )
     device.status = "degraded" if device.health_score < 60 else "online"
     if previous == "offline":
         db.add(

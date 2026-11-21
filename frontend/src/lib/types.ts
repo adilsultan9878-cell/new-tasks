@@ -265,3 +265,134 @@ export interface IngestResult {
   alerts_created: number
   event_ids: string[]
 }
+
+// ---------------------------------------------------------------- Phase 3: NEXUS ZERO
+export type SubjectType = 'url' | 'domain' | 'ip' | 'hash' | 'email'
+export type Verdict = 'unknown' | 'benign' | 'suspicious' | 'malicious'
+
+export interface IntelFinding {
+  code: string
+  title: string
+  detail: string
+  severity: Severity
+  score: number
+  source: string
+  kind: 'intel' | 'heuristic' | 'context'
+  data: Record<string, unknown>
+}
+
+export interface Investigation {
+  id: string
+  subject_type: SubjectType
+  subject: string
+  title: string
+  status: string
+  verdict: Verdict
+  risk_score: number | null
+  created_at: string
+  completed_at: string | null
+}
+
+export interface SourceCheck {
+  source: string
+  status: 'ok' | 'not_configured' | 'unavailable' | 'skipped'
+  detail: string
+  duration_ms: number
+}
+
+export interface InvestigationDetail extends Investigation {
+  summary: string | null
+  verified_findings: IntelFinding[]
+  ai_assessment: string | null
+  timeline: { at: string; step: string; status: string; detail?: string; duration_ms?: number }[]
+  details: Record<string, unknown> & { checks?: SourceCheck[]; indicators?: { type: string; value: string }[] }
+}
+
+export interface Indicator {
+  id: string
+  indicator_type: string
+  value: string
+  verdict: Verdict
+  confidence: number
+  source: 'analyst' | 'investigation' | string
+  is_verified: boolean
+  first_seen_at: string
+  last_seen_at: string
+  context: { note?: string; investigations?: string[] } & Record<string, unknown>
+}
+
+export interface IntelProvider {
+  key: string
+  name: string
+  covers: string[]
+  requires_key: string | null
+  optional_key?: string | null
+  url: string | null
+  configured: boolean
+  enabled: boolean
+}
+
+export interface Vulnerability {
+  cve_id: string
+  title: string | null
+  vendor: string | null
+  product: string | null
+  cvss_score: number | null
+  severity: string | null
+  in_cisa_kev: boolean
+  kev_date_added: string | null
+  known_ransomware_use: boolean
+}
+
+export interface VulnerabilityDetail extends Vulnerability {
+  description: string | null
+  cvss_vector: string | null
+  published_at: string | null
+  last_modified_at: string | null
+  kev_due_date: string | null
+  kev_required_action: string | null
+  cwes: string[]
+  references: string[]
+  source: string
+  fetched_at: string
+  nvd_error: string | null
+}
+
+export interface VulnerabilityStats {
+  total: number
+  kev_total: number
+  ransomware_total: number
+  last_kev_sync: string | null
+}
+
+export interface NetworkScope {
+  id: string
+  cidr: string
+  label: string
+  is_private: boolean
+  created_at: string
+}
+
+export interface NetworkAsset {
+  id: string
+  ip_address: string
+  hostname: string | null
+  mac_address: string | null
+  vendor: string | null
+  open_ports: number[]
+  services: { port: number; protocol: string; service: string | null; product: string | null }[]
+  in_authorized_scope: boolean
+  source: string
+  device_id: string | null
+  first_seen_at: string
+  last_seen_at: string
+}
+
+export interface ScanImportResult {
+  hosts_in_file: number
+  imported: number
+  out_of_scope: number
+  new_assets: number
+  new_services: number
+  events: number
+}

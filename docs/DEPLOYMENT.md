@@ -187,6 +187,16 @@ tables, so nothing is exposed through Supabase's public REST endpoint.
 * The real-time hub and the offline-device sweeper run inside the API process. Keep a **single API
   instance** until a shared message bus is added (see docs/ARCHITECTURE.md §7).
 
+### Outbound access for threat intelligence
+
+If your API host restricts egress, allow HTTPS to: `services.nvd.nist.gov`, `www.cisa.gov`,
+`data.iana.org` and the RDAP servers it lists (e.g. `rdap.verisign.com`, `rdap.arin.net`,
+`rdap.db.ripe.net`, `rdap.apnic.net`, `rdap.publicinterestregistry.org`), `cloudflare-dns.com`, and,
+for the optional providers, `urlhaus-api.abuse.ch`, `mb-api.abuse.ch`, `api.abuseipdb.com`,
+`www.virustotal.com`. Render allows all outbound traffic by default.
+
+After the first deploy, open **Vulnerabilities → Refresh from CISA** once to load the KEV catalogue.
+
 ### Alternative: call the API directly (no proxy)
 
 Set `VITE_API_BASE_URL=https://<service>.onrender.com/api/v1`, add that origin to `connect-src`
@@ -226,6 +236,13 @@ on sub-domains of one custom domain (`app.example.com` / `api.example.com`, `Sam
 | `EVENT_DEDUP_WINDOW_MINUTES` | `10` | duplicate-folding window |
 | `BRUTEFORCE_THRESHOLD` / `BRUTEFORCE_WINDOW_MINUTES` | `5` / `5` | brute-force detection rule |
 | `WS_PING_INTERVAL_SECONDS` / `WS_REVALIDATE_SECONDS` | `25` / `300` | WebSocket keep-alive and re-authorization |
+| `ABUSECH_AUTH_KEY` | — | URLhaus + MalwareBazaar ([free key](https://auth.abuse.ch/)) |
+| `ABUSEIPDB_API_KEY` | — | IP reputation ([free key](https://www.abuseipdb.com/register), 1,000 checks/day) |
+| `VIRUSTOTAL_API_KEY` | — | multi-engine verdicts ([free key](https://www.virustotal.com/gui/join-us), ~4 requests/min) |
+| `NVD_API_KEY` | — | optional; NVD allows ~5 requests/30 s without a key |
+| `INTEL_OFFLINE` | `false` | `true` disables every outbound intelligence call (air-gapped labs, CI) |
+| `INTEL_HTTP_TIMEOUT_SECONDS` | `8` | per provider request |
+| `RATE_LIMIT_INVESTIGATIONS_PER_MINUTE` | `20` | per user |
 
 ---
 

@@ -14,9 +14,18 @@ export default defineConfig(({ mode }) => {
     changeOrigin: false,
     ws: true,
     // A browser closing its WebSocket (navigation, reload) resets the upstream socket: not an error.
-    configure: (proxy: { on: (event: 'error', cb: (err: NodeJS.ErrnoException) => void) => void }) => {
+    configure: (proxy: {
+      on(event: 'error', cb: (err: NodeJS.ErrnoException) => void): void
+      on(event: 'proxyReqWs', cb: (proxyReq: unknown, req: unknown, socket: NodeJS.EventEmitter) => void): void
+    }) => {
+      const benign = (err: NodeJS.ErrnoException) => err.code === 'ECONNRESET' || err.code === 'EPIPE'
       proxy.on('error', (err) => {
-        if (err.code !== 'ECONNRESET' && err.code !== 'EPIPE') console.error('[api proxy]', err.message)
+        if (!benign(err)) console.error('[api proxy]', err.message)
+      })
+      proxy.on('proxyReqWs', (_proxyReq, _req, socket) => {
+        socket.on('error', (err: NodeJS.ErrnoException) => {
+          if (!benign(err)) console.error('[api ws proxy]', err.message)
+        })
       })
     },
   }

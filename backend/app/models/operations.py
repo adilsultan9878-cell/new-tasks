@@ -198,8 +198,23 @@ class NetworkAsset(UUIDPrimaryKey, Timestamps, Base):
     open_ports: Mapped[list[Any]] = mapped_column(default=list)
     services: Mapped[list[Any]] = mapped_column(default=list)
     in_authorized_scope: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    source: Mapped[str] = mapped_column(String(16), default="import", server_default="import")
     first_seen_at: Mapped[datetime] = mapped_column(default=utcnow)
     last_seen_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class NetworkScope(UUIDPrimaryKey, Base):
+    """A network range the organization declares it is authorized to monitor/assess."""
+
+    __tablename__ = "network_scopes"
+    __table_args__ = (UniqueConstraint("organization_id", "cidr"),)
+
+    organization_id: Mapped[uuid.UUID] = _org_fk()
+    cidr: Mapped[str] = mapped_column(String(64))
+    label: Mapped[str] = mapped_column(String(120))
+    is_private: Mapped[bool] = mapped_column(Boolean, default=True)
+    attested_by: Mapped[uuid.UUID | None] = _user_fk()
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 
 # ----------------------------------------------------------------- detection (SENTINEL X SOC)
@@ -298,6 +313,10 @@ class Investigation(UUIDPrimaryKey, Timestamps, Base):
     # Verified facts (from trusted sources / deterministic checks) are kept apart from AI output.
     verified_findings: Mapped[list[Any]] = mapped_column(default=list)
     ai_assessment: Mapped[str | None] = mapped_column(Text)
+    # Step-by-step record of what was checked, with timings (Phase 3).
+    timeline: Mapped[list[Any]] = mapped_column(default=list)
+    # Structured context gathered during the investigation (parsed URL, RDAP, DNS, headers...).
+    details: Mapped[dict[str, Any]] = mapped_column(default=dict)
     created_by: Mapped[uuid.UUID | None] = _user_fk()
     started_at: Mapped[datetime | None]
     completed_at: Mapped[datetime | None]
@@ -330,10 +349,14 @@ class VulnerabilityRecord(UUIDPrimaryKey, Base):
     __tablename__ = "vulnerability_records"
     __table_args__ = (
         UniqueConstraint("cve_id"),
+        Index("ix_vulnerability_records_kev", "in_cisa_kev", "kev_date_added"),
         CheckConstraint("cvss_score IS NULL OR (cvss_score BETWEEN 0 AND 10)", name="cvss_score"),
     )
 
     cve_id: Mapped[str] = mapped_column(String(32))
+    title: Mapped[str | None] = mapped_column(String(255))
+    vendor: Mapped[str | None] = mapped_column(String(120))
+    product: Mapped[str | None] = mapped_column(String(120))
     description: Mapped[str | None] = mapped_column(Text)
     cvss_score: Mapped[float | None] = mapped_column(Float)
     cvss_vector: Mapped[str | None] = mapped_column(String(255))
@@ -342,6 +365,10 @@ class VulnerabilityRecord(UUIDPrimaryKey, Base):
     last_modified_at: Mapped[datetime | None]
     in_cisa_kev: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     kev_date_added: Mapped[datetime | None]
+    kev_due_date: Mapped[datetime | None]
+    kev_required_action: Mapped[str | None] = mapped_column(Text)
+    known_ransomware_use: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    cwes: Mapped[list[Any]] = mapped_column(default=list)
     references: Mapped[list[Any]] = mapped_column(default=list)
     source: Mapped[str] = mapped_column(String(32), default="nvd")
     fetched_at: Mapped[datetime] = mapped_column(default=utcnow)
@@ -514,6 +541,7 @@ TENANT_TABLES: tuple[str, ...] = (
     "cameras",
     "sensors",
     "network_assets",
+    "network_scopes",
     "security_events",
     "incidents",
     "alerts",

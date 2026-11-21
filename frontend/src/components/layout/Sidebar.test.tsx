@@ -13,7 +13,8 @@ describe('Sidebar', () => {
     const nav = screen.getByRole('navigation', { name: 'Main' })
     const links = within(nav).getAllByRole('link')
     expect(links.length).toBe(MODULES.length)
-    expect(within(nav).getByRole('link', { name: /Phishing & URL/ })).toHaveTextContent('P3')
+    expect(within(nav).getByRole('link', { name: /Computer Vision/ })).toHaveTextContent('P6')
+    expect(within(nav).getByRole('link', { name: /Phishing & URL/ })).not.toHaveTextContent('P3')
     expect(within(nav).getByRole('link', { name: 'Command Center' })).toHaveAttribute('href', `/org/${m.organization.id}`)
   })
 

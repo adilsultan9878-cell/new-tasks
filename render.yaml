@@ -29,6 +29,15 @@ services:
         value: lax
       - key: FORWARDED_ALLOW_IPS
         value: "*"
+      # Optional threat-intelligence keys (free tiers). Leave unset to run without them.
+      - key: ABUSECH_AUTH_KEY # URLhaus + MalwareBazaar — https://auth.abuse.ch/
+        sync: false
+      - key: ABUSEIPDB_API_KEY # https://www.abuseipdb.com/register
+        sync: false
+      - key: VIRUSTOTAL_API_KEY # https://www.virustotal.com/gui/join-us
+        sync: false
+      - key: NVD_API_KEY # optional, raises NVD rate limits
+        sync: false
       - key: DB_POOL_SIZE
         value: "3"
       - key: DB_MAX_OVERFLOW

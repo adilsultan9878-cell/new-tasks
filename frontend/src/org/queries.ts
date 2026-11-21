@@ -17,6 +17,15 @@ export const qk = {
   events: (orgId: string, params: Record<string, unknown>) => ['events', orgId, params] as const,
   event: (orgId: string, id: string) => ['events', orgId, 'detail', id] as const,
   alerts: (orgId: string) => ['alerts', orgId] as const,
+  investigations: (orgId: string, types: string) => ['investigations', orgId, types] as const,
+  investigation: (orgId: string, id: string) => ['investigations', orgId, 'detail', id] as const,
+  indicators: (orgId: string, params: Record<string, unknown>) => ['indicators', orgId, params] as const,
+  providers: ['intel-providers'] as const,
+  vulns: (params: Record<string, unknown>) => ['vulnerabilities', params] as const,
+  vulnStats: ['vulnerabilities', 'stats'] as const,
+  vuln: (id: string) => ['vulnerabilities', 'detail', id] as const,
+  scopes: (orgId: string) => ['network-scopes', orgId] as const,
+  assets: (orgId: string) => ['network-assets', orgId] as const,
 }
 
 export function useMemberships(enabled = true) {
