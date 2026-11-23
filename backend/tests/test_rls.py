@@ -116,3 +116,19 @@ def test_every_tenant_table_has_forced_rls_policy(app_engine, admin_engine):
         ).all()
     assert {r[0] for r in rows} == set(TENANT_TABLES)
     assert all(r[1] and r[2] and r[3] for r in rows), [r for r in rows if not (r[1] and r[2] and r[3])]
+
+
+def test_security_functions_pin_search_path(postgres_only, admin_engine):
+    """Guard rail (Supabase lint 0011): every function in public has a fixed search_path, so a
+    shadowing object on the caller's path cannot subvert an RLS policy."""
+    with admin_engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT p.proname, p.proconfig FROM pg_proc p "
+                "JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public'"
+            )
+        ).all()
+    names = {r[0] for r in rows}
+    assert {"app_current_org", "app_current_user", "app_api_context", "audit_logs_append_only"} <= names
+    unpinned = [r[0] for r in rows if not any(c.startswith("search_path=") for c in (r[1] or []))]
+    assert unpinned == []

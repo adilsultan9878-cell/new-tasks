@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from datetime import UTC, datetime
 
 import sqlalchemy as sa
 from alembic import op
@@ -57,8 +56,8 @@ def upgrade() -> None:
     op.add_column('vulnerability_records', sa.Column('cwes', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), server_default=sa.text("'[]'"), nullable=False))
     op.create_index('ix_vulnerability_records_kev', 'vulnerability_records', ['in_cisa_kev', 'kev_date_added'], unique=False)
 
-    bind = op.get_bind()
-    if bind.dialect.name == "postgresql":
+    dialect = op.get_context().dialect.name  # works online and in offline (--sql) mode
+    if dialect == "postgresql":
         op.execute("ALTER TABLE network_scopes ENABLE ROW LEVEL SECURITY")
         op.execute("ALTER TABLE network_scopes FORCE ROW LEVEL SECURITY")
         op.execute(
@@ -79,30 +78,27 @@ def upgrade() -> None:
         # Identity tables are FORCE RLS-gated on the API context; seed inside that context.
         op.execute("SELECT set_config('app.current_context', 'api', true)")
 
-    permissions = sa.table("permissions", sa.column("id", sa.Uuid()), sa.column("key", sa.String()),
-                           sa.column("description", sa.String()), sa.column("created_at", sa.DateTime(timezone=True)))
-    role_permissions = sa.table("role_permissions", sa.column("role_id", sa.Uuid()), sa.column("permission_id", sa.Uuid()))
-    roles = {key: rid for rid, key in bind.execute(
-        sa.text("SELECT id, key FROM roles WHERE organization_id IS NULL")).all()}
-    now = datetime.now(UTC)
+    # Seed with plain SQL (no reads), so the migration also renders as an offline SQL script.
     for key, (description, role_keys) in NEW_PERMISSIONS.items():
         pid = uuid.uuid4()
-        op.bulk_insert(permissions, [{"id": pid, "key": key, "description": description, "created_at": now}])
-        op.bulk_insert(role_permissions, [
-            {"role_id": uuid.UUID(str(roles[r])) if not isinstance(roles[r], uuid.UUID) else roles[r], "permission_id": pid}
-            for r in role_keys if r in roles
-        ])
+        pid_value = pid.hex if dialect == "sqlite" else str(pid)  # SQLAlchemy's Uuid storage per dialect
+        pid_expr = "CAST(:pid AS UUID)" if dialect == "postgresql" else ":pid"
+        op.execute(sa.text(
+            f"INSERT INTO permissions (id, key, description, created_at) VALUES ({pid_expr}, :key, :description, CURRENT_TIMESTAMP)"
+        ).bindparams(pid=pid_value, key=key, description=description))
+        role_list = ", ".join(f"'{r}'" for r in role_keys)  # constants defined above
+        op.execute(sa.text(
+            f"INSERT INTO role_permissions (role_id, permission_id) SELECT id, {pid_expr} FROM roles "
+            f"WHERE organization_id IS NULL AND key IN ({role_list})"
+        ).bindparams(pid=pid_value))
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
-    if bind.dialect.name == "postgresql":
+    if op.get_context().dialect.name == "postgresql":
         op.execute("SELECT set_config('app.current_context', 'api', true)")
-    keys = list(NEW_PERMISSIONS)
-    bind.execute(sa.text(
-        "DELETE FROM role_permissions WHERE permission_id IN (SELECT id FROM permissions WHERE key IN :k)"
-    ).bindparams(sa.bindparam("k", expanding=True)), {"k": keys})
-    bind.execute(sa.text("DELETE FROM permissions WHERE key IN :k").bindparams(sa.bindparam("k", expanding=True)), {"k": keys})
+    keys = ", ".join(f"'{k}'" for k in NEW_PERMISSIONS)  # constants defined above
+    op.execute(f"DELETE FROM role_permissions WHERE permission_id IN (SELECT id FROM permissions WHERE key IN ({keys}))")
+    op.execute(f"DELETE FROM permissions WHERE key IN ({keys})")
     op.drop_index('ix_vulnerability_records_kev', table_name='vulnerability_records')
     for col in ('cwes', 'known_ransomware_use', 'kev_required_action', 'kev_due_date', 'product', 'vendor', 'title'):
         op.drop_column('vulnerability_records', col)

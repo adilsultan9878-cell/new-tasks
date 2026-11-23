@@ -51,7 +51,7 @@ def upgrade() -> None:
     op.add_column('security_events', sa.Column('occurrence_count', sa.Integer(), server_default='1', nullable=False))
     op.add_column('security_events', sa.Column('last_occurred_at', sa.DateTime(timezone=True), nullable=True))
 
-    if op.get_bind().dialect.name == "postgresql":
+    if op.get_context().dialect.name == "postgresql":
         op.execute("ALTER TABLE enrollment_tokens ENABLE ROW LEVEL SECURITY")
         op.execute("ALTER TABLE enrollment_tokens FORCE ROW LEVEL SECURITY")
         op.execute(

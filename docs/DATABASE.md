@@ -166,6 +166,8 @@ Command Center's *System health* panel reports the live posture: `Enforced`,
 Additional hardening in the migration:
 
 * `audit_logs_append_only` trigger rejects any UPDATE (except the FK nulling a deleted user);
+* every function in `public` has a pinned `search_path` (`0004`), so an object created earlier on
+  a caller's path cannot shadow `current_setting()` and subvert a policy (Supabase lint 0011);
 * on Supabase, all privileges are revoked from the `anon` and `authenticated` Data-API roles so the
   tables are never reachable through the public REST endpoint.
 
@@ -184,6 +186,16 @@ alembic downgrade base
 # create a new migration after changing models
 alembic revision --autogenerate -m "describe change"
 ```
+
+Every migration also renders offline (`alembic upgrade <from>:<to> --sql`), which is how SQL is
+applied through Supabase's SQL Editor when there is no direct connection.
+
+| Revision | Contents |
+|---|---|
+| `0001` | identity, tenancy, RBAC seed, operational tables, RLS, audit trigger, Data-API revokes |
+| `0002` | device enrollment tokens and event-ingestion columns |
+| `0003` | network scopes, investigation timeline/details, intel and network permissions |
+| `0004` | pinned `search_path` on the RLS helper and audit trigger functions |
 
 Migrations never import application models for data changes (seed data is frozen inside the
 migration), so old migrations keep working as the models evolve. A test asserts the seeded

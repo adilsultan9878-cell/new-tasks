@@ -608,7 +608,7 @@ def upgrade() -> None:
     op.create_index('ix_approvals_action', 'approvals', ['response_action_id'], unique=False)
     op.create_index('ix_approvals_org_status', 'approvals', ['organization_id', 'status'], unique=False)
     _seed_rbac()
-    if op.get_bind().dialect.name == "postgresql":
+    if op.get_context().dialect.name == "postgresql":
         _install_postgres_security()
 
 
@@ -705,8 +705,8 @@ def _install_postgres_security() -> None:
         BEGIN
             FOREACH r IN ARRAY ARRAY['anon', 'authenticated'] LOOP
                 IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
-                    EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', r);
-                    EXECUTE format('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM %I', r);
+                    EXECUTE 'REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ' || quote_ident(r);
+                    EXECUTE 'REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM ' || quote_ident(r);
                 END IF;
             END LOOP;
         END $$;
@@ -714,7 +714,7 @@ def _install_postgres_security() -> None:
 
 
 def downgrade() -> None:
-    if op.get_bind().dialect.name == "postgresql":
+    if op.get_context().dialect.name == "postgresql":
         op.execute("DROP TRIGGER IF EXISTS audit_logs_append_only ON audit_logs")
         op.execute("DROP FUNCTION IF EXISTS audit_logs_append_only()")
     op.drop_index('ix_approvals_org_status', table_name='approvals')
@@ -767,7 +767,7 @@ def downgrade() -> None:
     op.drop_table('vulnerability_records')
     op.drop_table('users')
     op.drop_table('permissions')
-    if op.get_bind().dialect.name == "postgresql":
+    if op.get_context().dialect.name == "postgresql":
         op.execute("DROP FUNCTION IF EXISTS app_current_org()")
         op.execute("DROP FUNCTION IF EXISTS app_current_user()")
         op.execute("DROP FUNCTION IF EXISTS app_api_context()")
