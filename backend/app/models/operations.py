@@ -54,6 +54,7 @@ INVESTIGATION_STATUSES = ("pending", "running", "completed", "failed")
 VERDICTS = ("unknown", "benign", "suspicious", "malicious")
 INDICATOR_TYPES = ("ipv4", "ipv6", "domain", "url", "email", "md5", "sha1", "sha256")
 AGENT_RUN_STATUSES = ("queued", "running", "succeeded", "failed", "cancelled")
+BRAIN_SUBJECT_TYPES = ("alert", "device", "organization")
 ACTION_STATUSES = (
     "proposed",
     "pending_approval",
@@ -395,10 +396,20 @@ class Evidence(UUIDPrimaryKey, Base):
 
 # --------------------------------------------------------------------------- AI agents & response
 class AgentRun(UUIDPrimaryKey, Base):
+    """One Security Brain analysis: the orchestrator's run over a subject (Phase 4).
+
+    With ``model_provider = 'none'`` every field is produced by deterministic, documented rules;
+    ``factors`` holds the weighted risk breakdown and ``trace`` every read-only tool call.
+    """
+
     __tablename__ = "agent_runs"
     __table_args__ = (
         CheckConstraint(in_values("status", AGENT_RUN_STATUSES), name="status"),
+        CheckConstraint(in_values("subject_type", BRAIN_SUBJECT_TYPES), name="subject_type"),
+        CheckConstraint("risk_score IS NULL OR (risk_score BETWEEN 0 AND 100)", name="risk_score"),
+        CheckConstraint("coverage IS NULL OR (coverage BETWEEN 0 AND 100)", name="coverage"),
         Index("ix_agent_runs_org_created", "organization_id", "created_at"),
+        Index("ix_agent_runs_org_subject", "organization_id", "subject_type", "subject_id"),
     )
 
     organization_id: Mapped[uuid.UUID] = _org_fk()
@@ -414,6 +425,17 @@ class AgentRun(UUIDPrimaryKey, Base):
     output_summary: Mapped[dict[str, Any]] = mapped_column(default=dict)
     tokens_used: Mapped[int | None] = mapped_column(Integer)
     error: Mapped[str | None] = mapped_column(Text)
+    # Phase 4 — what was analysed, by whom, and the transparent result.
+    subject_type: Mapped[str | None] = mapped_column(String(24))  # alert, device, organization
+    subject_id: Mapped[uuid.UUID | None]
+    subject_label: Mapped[str | None] = mapped_column(String(255))
+    created_by: Mapped[uuid.UUID | None] = _user_fk()
+    risk_score: Mapped[int | None] = mapped_column(Integer)
+    risk_level: Mapped[str | None] = mapped_column(String(16))
+    coverage: Mapped[int | None] = mapped_column(Integer)  # % of the scoring model that had data
+    factors: Mapped[list[Any]] = mapped_column(default=list)
+    trace: Mapped[list[Any]] = mapped_column(default=list)
+    report: Mapped[str | None] = mapped_column(Text)
     started_at: Mapped[datetime | None]
     finished_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
@@ -428,7 +450,9 @@ class AgentDecision(UUIDPrimaryKey, Base):
 
     organization_id: Mapped[uuid.UUID] = _org_fk()
     agent_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"))
-    decision_type: Mapped[str] = mapped_column(String(48))  # classify, score, recommend_action...
+    decision_type: Mapped[str] = mapped_column(String(48))  # finding, score, classify, recommend
+    agent_name: Mapped[str | None] = mapped_column(String(64))
+    severity: Mapped[str | None] = mapped_column(String(16))
     summary: Mapped[str] = mapped_column(Text)
     rationale: Mapped[str | None] = mapped_column(Text)
     confidence: Mapped[int | None] = mapped_column(Integer)

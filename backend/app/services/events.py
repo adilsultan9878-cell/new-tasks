@@ -32,6 +32,20 @@ from app.services import realtime
 SEVERITY_SCORE = {"info": 10, "low": 30, "medium": 50, "high": 75, "critical": 95}
 ALERTING_SEVERITIES = {"high", "critical"}
 BRUTEFORCE_EVENT = "auth.login_failed"
+# raw fields lifted into normalized.observables (matched against the watchlist by the Brain)
+OBSERVABLE_KEYS = (
+    "source_ip",
+    "destination_ip",
+    "port",
+    "process",
+    "user",
+    "domain",
+    "url",
+    "file_hash",
+    "sha256",
+    "md5",
+    "sha1",
+)
 
 
 @dataclass
@@ -76,7 +90,7 @@ def normalize(item: EventIn, device: Device | None, source: str) -> dict[str, An
             "os": device.os,
             "ip": device.ip_address,
         }
-    for key in ("source_ip", "destination_ip", "port", "process", "user"):
+    for key in OBSERVABLE_KEYS:
         if key in item.raw and isinstance(item.raw[key], str | int):
             normalized.setdefault("observables", {})[key] = item.raw[key]
     return normalized
@@ -287,4 +301,8 @@ def ingest(
         outcome.event_ids.append(event.id)
         outcome.alerts += _run_rules(db, event, device, is_new=True)
         realtime.queue_broadcast(db, org_id, "event.created", event_summary(event, device_name))
+    if outcome.alerts:
+        from app.brain.orchestrator import auto_triage  # local import: the Brain reads event data
+
+        auto_triage(db, org_id, [a.id for a in outcome.alerts])
     return outcome

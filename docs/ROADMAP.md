@@ -70,12 +70,22 @@ Legend: ✅ implemented and covered by automated tests · 🟡 partially impleme
 | Optional provider keys tested with real accounts | 🟡 | adapters are unit-tested with recorded responses; live keys not yet configured |
 | Zeek / pcap ingestion | ⬜ | planned with the Phase 9 hardening work |
 
-## Phase 4 — AI Brain ⬜
+## Phase 4 — Security Brain ✅ (v0.4.0)
 
-- Pluggable LLM providers (none / Ollama / hosted), configured by environment
-- Orchestrator + specialised agents with read-only, tenant-scoped tools
-- Risk scoring (deterministic weights + AI confidence), investigation reports
-- Agent run / decision history UI
+Built with `AI_PROVIDER=none`: every score, finding and recommendation comes from deterministic,
+published rules over the organization's own data. No AI model is used.
+
+| Feature | Status | Evidence |
+|---|---|---|
+| Orchestrator with five specialised agents — Alert Triage, Device Risk, Network Exposure, Threat-Intel Correlation, Security Posture — over three subjects (alert, device, organization) | ✅ | `tests/test_brain.py` |
+| Read-only, tenant-scoped toolbox (12 tools): explicit organization filter on top of RLS, plain-data snapshots instead of ORM objects, a write guard that aborts the run, and a static check that forbids writes, shell, and network access in agents and tools | ✅ | `test_agents_and_tools_cannot_write_or_reach_out`, `test_toolbox_aborts_a_tool_that_leaves_pending_writes` |
+| Published, weighted scoring models (each totals 100 points), data coverage (missing data is reported, never hidden), risk levels and alert priority P1-P4 | ✅ | `test_scoring_levels_coverage_and_clamping`, exact-score end-to-end tests |
+| Automatic triage of every new alert, inside a savepoint (a Brain failure never breaks event ingestion); `BRAIN_AUTO_TRIAGE` switch | ✅ | `test_new_alert_is_triaged_automatically`, `test_auto_triage_can_be_disabled` |
+| Playbook recommendations: advice only, nothing executed; system-changing advice flagged for human approval | ✅ | tests + UI |
+| Run history, decision log (`is_ai_generated = false`), full tool trace, downloadable Markdown report, audit entries, real-time updates | ✅ | `test_decision_history_and_agent_activity`, e2e `brain.spec.ts` |
+| Security Brain and Agent Center pages; triage badges on alerts; device risk in the device view | ✅ | `BrainPage.test.tsx`, `RunPage.test.tsx`, e2e |
+| AI model provider (Ollama / hosted) | ⬜ | not configured by choice; if added, it would only contribute separately labelled narrative text on top of the deterministic result |
+| Asset-to-CVE matching | ⬜ | needs a reliable product/version (CPE) inventory; planned with Phase 9 |
 
 ## Phase 5 — SENTINEL X SOC ⬜
 

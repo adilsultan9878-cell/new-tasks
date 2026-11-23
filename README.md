@@ -18,8 +18,9 @@ and **human-approved** automated defense. It is built phase by phase. Every feat
 is implemented end to end and covered by automated tests. Nothing in the UI is a mock or a fake
 counter.
 
-> **Status: Phase 3 (NEXUS ZERO threat intelligence) complete — v0.3.0.** Phases 1 (Foundation)
-> and 2 (Security Event Engine) shipped in v0.1.0 and v0.2.0; Phase 4 (AI Security Brain) is next.
+> **Status: Phase 4 (Security Brain) complete — v0.4.0.** Phases 1-3 (Foundation, Security
+> Event Engine, NEXUS ZERO) shipped in v0.1.0-v0.3.0; Phase 5 (SENTINEL X SOC) is next. The Brain
+> is deterministic: no AI model is configured, and nothing is presented as AI-generated.
 > See [docs/ROADMAP.md](docs/ROADMAP.md) for the full list of completed and pending features.
 
 ## What works today
@@ -43,6 +44,8 @@ counter.
 | 🐞 **Vulnerability Intelligence** | Syncs the CISA Known Exploited Vulnerabilities catalogue (1,790 CVEs) and enriches CVEs on demand from NIST NVD (CVSS, CWE, references). Includes search and a ransomware filter. |
 | 🛰️ **Network Security Monitor** | You declare the scopes you are authorized to assess (≤ /16, and public ranges need an attestation), then import Nmap XML; out-of-scope hosts are discarded. Risky or new exposed services raise events, and agents' listening ports feed the inventory. The platform itself never scans. |
 | 🧾 **Explainable results** | Every finding shows its source and whether it is verified intelligence or a deterministic check. Each investigation lists the sources consulted, not configured or unavailable, plus a timeline. With no evidence the verdict is "No known threat found", never "safe". Malicious results raise alerts automatically. |
+| 🧠 **Security Brain** | An orchestrator runs five specialised agents over an alert, a device or the whole organization and scores risk with a published, weighted model (every model totals 100 points). It shows the factor breakdown, data coverage (missing data lowers coverage instead of being hidden), findings with evidence, playbook recommendations and the full tool trace, and you can download a Markdown report. Every new alert is triaged automatically (P1-P4). The engine is deterministic: no AI model is used. |
+| 🤖 **Agent Center** | Lists each agent, the read-only tools it may use and its decision history. Guardrails are enforced in code and by tests: agents cannot write, run commands or reach the network, and recommendations are advice only. |
 | 🗺️ **Roadmap pages** | Modules that are not built yet show what they will do and which phase delivers them. They contain no fake buttons. |
 
 ## Architecture at a glance
@@ -131,11 +134,11 @@ The Threat Intelligence page shows which sources are configured.
 
 | Suite | Command | Covers |
 |---|---|---|
-| Backend (SQLite) | `cd backend; pytest` | health, auth, organizations, RBAC, tenant isolation, enrollment, device auth, ingestion, detection rules, sweeper, WebSocket, real agent ↔ live server, investigations (URL/domain/IP/hash/email), SSRF guard, KEV/NVD, scopes, Nmap import (97 tests) |
-| Backend (PostgreSQL + RLS) | `$env:TEST_DATABASE_URL="postgresql://postgres:<pw>@localhost:5432/postgres"; pytest` | everything above, run as the least-privileged DB role, plus RLS proofs for every tenant table (103 tests) |
+| Backend (SQLite) | `cd backend; pytest` | health, auth, organizations, RBAC, tenant isolation, enrollment, device auth, ingestion, detection rules, sweeper, WebSocket, real agent ↔ live server, investigations (URL/domain/IP/hash/email), SSRF guard, KEV/NVD, scopes, Nmap import, Security Brain agents, scoring and read-only guards (109 tests) |
+| Backend (PostgreSQL + RLS) | `$env:TEST_DATABASE_URL="postgresql://postgres:<pw>@localhost:5432/postgres"; pytest` | everything above, run as the least-privileged DB role, plus RLS proofs for every tenant table (116 tests) |
 | Agent | `cd agent; python -m pytest` | config allow-list, no-command-execution guard, collectors, detectors, offline spool, revocation (19 tests; CI runs them on Linux **and Windows**) |
-| Frontend unit/component | `cd frontend; npm test` | API client, session refresh, sidebar RBAC, dashboard, devices, events, live WebSocket client, Pages proxy, investigation view (26 tests) |
-| End-to-end (Playwright) | `cd frontend; npx playwright install chromium; npx playwright test` | sign-up → org → dashboard → sign-in again; tenant isolation and RBAC; **real agent enrolled from the console, shown live, then revoked**; high-severity report → alert toast; phishing analysis → alert; Nmap import respects scopes (7 tests, intel providers offline for determinism) |
+| Frontend unit/component | `cd frontend; npm test` | API client, session refresh, sidebar RBAC, dashboard, devices, events, live WebSocket client, Pages proxy, investigation view, Security Brain pages (30 tests) |
+| End-to-end (Playwright) | `cd frontend; npx playwright install chromium; npx playwright test` | sign-up → org → dashboard → sign-in again; tenant isolation and RBAC; **real agent enrolled from the console, shown live, then revoked**; high-severity report → alert toast; phishing analysis → alert; Nmap import respects scopes; new alert auto-triaged by the Security Brain, organization analysis and report download (9 tests, intel providers offline for determinism) |
 | Lint / types | `ruff check .` · `npm run lint` · `npm run typecheck` | |
 
 CI runs all of the above on every push ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
@@ -155,8 +158,8 @@ docs/       Architecture, database, security/threat model, deployment, roadmap
 SENTINEL X is for systems you own or are explicitly authorized to monitor and test. Under the
 platform's design rules it never scans the internet, exploits third-party systems, runs
 unrestricted remote commands, or takes high-impact actions without human approval. Simulated or
-demo data is always labelled. AI output is always marked as AI-generated and is kept separate from
-verified intelligence.
+demo data is always labelled. AI output, if a model is ever configured, is marked as AI-generated and kept separate from
+verified intelligence; the current Security Brain uses no AI model.
 
 ## Screens
 

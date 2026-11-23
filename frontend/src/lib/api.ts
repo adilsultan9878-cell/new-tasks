@@ -132,7 +132,7 @@ export function refreshSession(): Promise<TokenResponse | null> {
   return refreshing
 }
 
-export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+async function authorizedRequest(path: string, opts: RequestOptions): Promise<Response> {
   let res = await rawRequest(path, opts)
   if (res.status === 401 && opts.auth !== false) {
     const refreshed = await refreshSession()
@@ -144,6 +144,26 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
     }
   }
   if (!res.ok) throw await toError(res)
+  return res
+}
+
+export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+  const res = await authorizedRequest(path, opts)
   if (res.status === 204) return undefined as T
   return (await res.json()) as T
+}
+
+/** Download an authenticated file response (e.g. a report) and hand it to the browser. */
+export async function downloadFile(path: string, fallbackName: string): Promise<void> {
+  const res = await authorizedRequest(path, {})
+  const blob = await res.blob()
+  const match = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = match?.[1] ?? fallbackName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

@@ -7,6 +7,9 @@ import { ApiError } from '@/lib/api'
 import { OrgShell, RootRedirect } from '@/org/OrgShell'
 import { ToastProvider } from '@/realtime/Toaster'
 import { AuditLogPage } from '@/pages/audit/AuditLogPage'
+import { AgentCenterPage } from '@/pages/brain/AgentCenterPage'
+import { BrainPage } from '@/pages/brain/BrainPage'
+import { RunPage } from '@/pages/brain/RunPage'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { SettingsPage } from '@/pages/account/SettingsPage'
@@ -61,6 +64,9 @@ export const routes = [
           { path: 'file-hash', element: <FileHashPage /> },
           { path: 'vulnerabilities', element: <VulnerabilitiesPage /> },
           { path: 'network', element: <NetworkPage /> },
+          { path: 'brain', element: <BrainPage /> },
+          { path: 'brain/runs/:runId', element: <RunPage /> },
+          { path: 'agents', element: <AgentCenterPage /> },
           { path: 'organization', element: <OrganizationPage /> },
           { path: 'members', element: <MembersPage /> },
           { path: 'audit', element: <AuditLogPage /> },

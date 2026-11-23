@@ -250,6 +250,10 @@ on sub-domains of one custom domain (`app.example.com` / `api.example.com`, `Sam
 | `INTEL_OFFLINE` | `false` | `true` disables every outbound intelligence call (air-gapped labs, CI) |
 | `INTEL_HTTP_TIMEOUT_SECONDS` | `8` | per provider request |
 | `RATE_LIMIT_INVESTIGATIONS_PER_MINUTE` | `20` | per user |
+| `AI_PROVIDER` | `none` | Security Brain engine; only `none` (deterministic rules, no AI model) is supported — other values are rejected at start-up |
+| `BRAIN_AUTO_TRIAGE` | `true` | analyse every new alert automatically |
+| `BRAIN_LOOKBACK_DAYS` | `7` | event window the Brain's agents read (1-90) |
+| `RATE_LIMIT_BRAIN_PER_MINUTE` | `30` | manual analyses per user |
 
 ---
 

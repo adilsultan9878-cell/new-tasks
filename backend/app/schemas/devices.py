@@ -203,6 +203,7 @@ class DeviceOut(APIModel):
     status: str
     enrollment_status: str
     health_score: int | None
+    risk_score: int | None  # latest Security Brain device score (null until analysed)
     agent_version: str | None
     enrolled_at: datetime | None
     last_seen_at: datetime | None

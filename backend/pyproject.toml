@@ -1,6 +1,6 @@
 [project]
 name = "sentinel-x-backend"
-version = "0.3.0"
+version = "0.4.0"
 description = "SENTINEL X — AEGIS NEXUS API"
 requires-python = ">=3.11"
 

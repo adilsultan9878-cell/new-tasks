@@ -113,6 +113,18 @@ flowchart LR
 | Privacy of analysed files | uploading confidential documents | files are hashed in the browser; only the SHA-256 is sent |
 | Automation overruling analysts | an investigation flipping a watchlist verdict | analyst-set indicators are never modified by automated results |
 
+## Phase 4 additions: Security Brain
+
+| Threat | Example | Control (implemented, tested) |
+|---|---|---|
+| Agent overreach | an analysis step changes data, runs a command or calls out | agents get a read-only toolbox, not the session; tools return plain data; pending writes abort the run; a static test forbids write methods, raw SQL, shell and network imports |
+| Cross-tenant analysis | analysing another organization's alert or device by ID | the subject is resolved through the toolbox with the run's organization filter and RLS → 404 |
+| Overstated confidence | a quiet result read as "safe" when data was missing | factors without data score 0 and lower the reported coverage; the UI and report say the score is a lower bound |
+| Pretending AI was used | an engine label or text implying a model | `AI_PROVIDER` accepts only `none`; decisions carry `is_ai_generated = false`; the UI labels the engine "deterministic — no AI model" |
+| Automated response without approval | a recommendation is acted on automatically | recommendations are text only; system-changing ones are flagged "requires human approval"; nothing is executed in this phase |
+| Analysis breaking detection | a Brain error drops events | automatic triage runs in a savepoint; failures are logged and ingestion continues |
+| Abuse / load | scripted analyses | per-user limit (`RATE_LIMIT_BRAIN_PER_MINUTE`, 30/min); tools cap rows (≤ 500 events, ≤ 2,000 assets) |
+
 ## Reporting a vulnerability
 
 Please do not open public issues for security problems. Email the maintainer privately with steps

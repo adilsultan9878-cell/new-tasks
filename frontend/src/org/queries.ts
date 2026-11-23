@@ -26,6 +26,11 @@ export const qk = {
   vuln: (id: string) => ['vulnerabilities', 'detail', id] as const,
   scopes: (orgId: string) => ['network-scopes', orgId] as const,
   assets: (orgId: string) => ['network-assets', orgId] as const,
+  brainStatus: ['brain', 'status'] as const,
+  brainRuns: (orgId: string, params: Record<string, unknown>) => ['brain', orgId, 'runs', params] as const,
+  brainRun: (orgId: string, id: string) => ['brain', orgId, 'run', id] as const,
+  brainDecisions: (orgId: string, params: Record<string, unknown>) => ['brain', orgId, 'decisions', params] as const,
+  brainActivity: (orgId: string) => ['brain', orgId, 'activity'] as const,
 }
 
 export function useMemberships(enabled = true) {

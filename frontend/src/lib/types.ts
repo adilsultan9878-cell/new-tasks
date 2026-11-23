@@ -174,6 +174,8 @@ export interface Device {
   status: DeviceStatus
   enrollment_status: 'pending' | 'enrolled' | 'revoked'
   health_score: number | null
+  /** Latest Security Brain device score (null until analysed). */
+  risk_score: number | null
   agent_version: string | null
   enrolled_at: string | null
   last_seen_at: string | null
@@ -248,6 +250,16 @@ export interface Alert {
   status: string
   risk_score: number | null
   detection_rule: string | null
+  created_at: string
+  /** Latest Security Brain triage of this alert (null until analysed). */
+  triage?: TriageSummary | null
+}
+
+export interface TriageSummary {
+  run_id: string
+  risk_score: number | null
+  risk_level: RiskLevel | null
+  priority: string | null
   created_at: string
 }
 
@@ -395,4 +407,125 @@ export interface ScanImportResult {
   new_assets: number
   new_services: number
   events: number
+}
+
+// ------------------------------------------------------------------ Security Brain (Phase 4)
+export type RiskLevel = 'info' | 'low' | 'medium' | 'high' | 'critical'
+export type BrainSubject = 'alert' | 'device' | 'organization'
+export type AgentName = 'triage' | 'device' | 'exposure' | 'intel' | 'posture'
+
+export interface BrainFactor {
+  key: string
+  label: string
+  agent: string
+  points: number
+  max_points: number
+  has_data: boolean
+  evidence: string
+}
+
+export interface BrainTraceEntry {
+  seq: number
+  agent: string
+  tool: string
+  args: Record<string, unknown>
+  rows: number
+  duration_ms: number
+}
+
+export interface EvidenceRef {
+  type: string
+  id: string
+  label: string
+}
+
+export interface BrainRecommendation {
+  code: string
+  text: string
+  urgency: 'now' | 'soon' | 'later'
+  changes_system: boolean
+  agent: string
+  because: string
+  evidence: EvidenceRef[]
+}
+
+export interface BrainDecision {
+  id: string
+  agent_run_id: string
+  decision_type: 'finding' | 'score' | 'classify' | 'recommend'
+  agent_name: string | null
+  severity: Severity | null
+  summary: string
+  rationale: string | null
+  confidence: number | null
+  is_ai_generated: boolean
+  evidence_refs: EvidenceRef[]
+  created_at: string
+}
+
+export interface BrainDecisionWithRun extends BrainDecision {
+  subject_type: BrainSubject | null
+  subject_label: string | null
+}
+
+export interface BrainRun {
+  id: string
+  agent_name: string
+  trigger: 'manual' | 'alert' | string
+  status: string
+  model_provider: string | null
+  subject_type: BrainSubject
+  subject_id: string | null
+  subject_label: string | null
+  risk_score: number | null
+  risk_level: RiskLevel | null
+  coverage: number | null
+  priority: string | null
+  summary: string | null
+  finding_count: number
+  recommendation_count: number
+  created_by: string | null
+  created_at: string
+  finished_at: string | null
+}
+
+export interface BrainRunDetail extends BrainRun {
+  factors: BrainFactor[]
+  trace: BrainTraceEntry[]
+  recommendations: BrainRecommendation[]
+  decisions: BrainDecision[]
+  agents: AgentName[]
+  lookback_days: number | null
+  engine_version: string | null
+}
+
+export interface BrainAgent {
+  name: AgentName
+  title: string
+  description: string
+  subjects: BrainSubject[]
+  tools: string[]
+}
+
+export interface BrainFactorModel {
+  key: string
+  label: string
+  max_points: number
+  agent: string
+  description: string
+}
+
+export interface BrainStatus {
+  engine: { provider: string; mode: string; model: string | null; ai_enabled: boolean; engine_version: string; description: string }
+  auto_triage: boolean
+  lookback_days: number
+  agents: BrainAgent[]
+  tools: { name: string; description: string }[]
+  models: Record<BrainSubject, BrainFactorModel[]>
+}
+
+export interface BrainActivity {
+  runs_total: number
+  runs_by_trigger: Record<string, number>
+  agents: { agent: AgentName; findings: number; recommendations: number; last_decision_at: string | null }[]
 }

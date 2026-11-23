@@ -119,7 +119,7 @@ export function InvestigationView({ inv }: { inv: InvestigationDetail }) {
             ))}
             {sources.length === 0 && <li className="px-3 py-2 text-xs text-fg-subtle">Deterministic checks only.</li>}
           </ul>
-          <p className="mt-2 text-xs text-fg-subtle">AI assessment: {inv.ai_assessment ?? 'not used — the AI Security Brain arrives in Phase 4 and will be labelled separately.'}</p>
+          <p className="mt-2 text-xs text-fg-subtle">AI assessment: {inv.ai_assessment ?? 'not used — no AI model is configured; all checks above are deterministic.'}</p>
         </section>
         <section>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-fg-muted">Timeline</h3>

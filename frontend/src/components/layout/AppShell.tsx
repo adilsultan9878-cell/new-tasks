@@ -80,14 +80,14 @@ export function AppShell({ memberships }: { memberships: Membership[] }) {
           </button>
           <button
             onClick={() => setPaletteOpen(true)}
-            className="flex h-9 w-full max-w-md items-center gap-2.5 rounded-lg border border-line bg-ink-900/80 px-3 text-sm text-fg-subtle transition-colors hover:border-line-strong hover:text-fg-muted"
+            className="flex h-9 w-full min-w-0 max-w-md items-center gap-2.5 rounded-lg border border-line bg-ink-900/80 px-3 text-sm text-fg-subtle transition-colors hover:border-line-strong hover:text-fg-muted"
             aria-label="Search (Ctrl+K)"
           >
             <Search className="size-4" aria-hidden />
             <span className="flex-1 truncate text-left">Search modules and actions…</span>
             <kbd className="hidden rounded border border-line-strong px-1.5 py-0.5 font-mono text-[10px] sm:inline">{isMac ? '⌘' : 'Ctrl'} K</kbd>
           </button>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex shrink-0 items-center gap-1">
             <LiveIndicator />
             <Notifications />
             <UserMenu />

@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 
 from app.api.deps import DB, OrgContext, require
 from app.core.errors import AppError, not_found
-from app.models import Alert, Device, SecurityEvent
+from app.models import AgentRun, Alert, Device, SecurityEvent
 from app.schemas.common import Page
 from app.schemas.events import (
     AlertOut,
@@ -19,9 +19,43 @@ from app.schemas.events import (
     IngestResult,
     ManualEventIn,
     RejectedEvent,
+    TriageSummary,
 )
 from app.services import audit, realtime
 from app.services import events as event_service
+
+
+def alerts_out(db: DB, org_id: uuid.UUID, alerts: list[Alert]) -> list[AlertOut]:
+    """Alerts with their latest Security Brain triage (one extra query for the whole page)."""
+    latest: dict[uuid.UUID, AgentRun] = {}
+    if alerts:
+        runs = db.scalars(
+            select(AgentRun)
+            .where(
+                AgentRun.organization_id == org_id,
+                AgentRun.subject_type == "alert",
+                AgentRun.subject_id.in_([a.id for a in alerts]),
+            )
+            .order_by(AgentRun.created_at.desc())
+        ).all()
+        for run in runs:
+            if run.subject_id is not None:
+                latest.setdefault(run.subject_id, run)
+    out = []
+    for alert in alerts:
+        item = AlertOut.model_validate(alert)
+        run = latest.get(alert.id)
+        if run is not None:
+            item.triage = TriageSummary(
+                run_id=run.id,
+                risk_score=run.risk_score,
+                risk_level=run.risk_level,
+                priority=(run.output_summary or {}).get("priority"),
+                created_at=run.created_at,
+            )
+        out.append(item)
+    return out
+
 
 router = APIRouter(prefix="/organizations/{org_id}", tags=["events"])
 
@@ -134,7 +168,7 @@ def get_event(
         description=event.description,
         raw=event.raw,
         normalized=event.normalized,
-        alerts=[AlertOut.model_validate(a) for a in alerts],
+        alerts=alerts_out(db, ctx.org_id, list(alerts)),
     )
 
 
@@ -183,4 +217,4 @@ def list_alerts(
     if status:
         filters.append(Alert.status == status)
     rows = db.scalars(select(Alert).where(*filters).order_by(Alert.created_at.desc()).limit(limit)).all()
-    return [AlertOut.model_validate(a) for a in rows]
+    return alerts_out(db, ctx.org_id, list(rows))

@@ -12,6 +12,7 @@ import { dateTime, relativeTime, titleCase } from '@/lib/format'
 import type { AgentConfig, DeviceDetail, Page, SecurityEvent } from '@/lib/types'
 import { useOrg } from '@/org/OrgContext'
 import { qk } from '@/org/queries'
+import { AnalyzeButton, levelForScore, RiskBadge } from '@/pages/brain/shared'
 
 function uptime(seconds?: number): string {
   if (seconds === undefined) return '—'
@@ -55,6 +56,7 @@ export function DeviceDetailDialog({ deviceId, onClose }: { deviceId: string; on
               {[
                 ['Status', <DeviceStatusBadge key="s" status={d.status} />],
                 ['Health score', d.health_score ?? '—'],
+                ['Brain risk', d.risk_score === null ? <span key="r" className="text-fg-subtle">not analysed</span> : <RiskBadge key="r" level={levelForScore(d.risk_score)} score={d.risk_score} />],
                 ['Uptime', uptime(t.uptime_seconds)],
                 ['Processes', t.process_count ?? '—'],
                 ['Operating system', d.os ?? '—'],
@@ -69,6 +71,12 @@ export function DeviceDetailDialog({ deviceId, onClose }: { deviceId: string; on
                 </div>
               ))}
             </dl>
+            {d.enrollment_status === 'enrolled' && (
+              <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-ink-900/40 px-4 py-3">
+                <p className="min-w-0 flex-1 text-xs text-fg-muted">The Security Brain scores this device from its status, health, open alerts, events, exposed ports and watchlist matches — deterministic rules, no AI model.</p>
+                <AnalyzeButton subjectType="device" subjectId={d.id} label="Analyze device" />
+              </div>
+            )}
             <div>
               <h3 className="mb-2 text-xs font-medium text-fg-muted">Listening TCP ports ({t.listening_ports?.length ?? 0})</h3>
               {t.listening_ports?.length ? (

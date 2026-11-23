@@ -32,6 +32,8 @@ PERMISSIONS: dict[str, str] = {
     "intel:manage": "Manage the indicator watchlist and refresh vulnerability feeds",
     "network:read": "View network assets and authorized scopes",
     "network:manage": "Manage authorized scopes and import network scans",
+    "brain:read": "View Security Brain analyses, agent decisions and reports",
+    "brain:run": "Run Security Brain analyses",
 }
 
 _READ = [p for p in PERMISSIONS if p.endswith(":read")]
@@ -65,6 +67,7 @@ ROLES: dict[str, dict[str, object]] = {
             "reports:manage",
             "intel:manage",
             "network:manage",
+            "brain:run",
         ],
     },
     "viewer": {

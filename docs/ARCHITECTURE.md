@@ -100,7 +100,7 @@ sequenceDiagram
 | # | Module | Pillar | Phase | Status |
 |---|---|---|---|---|
 | 1 | Command Center | Overview | 1 | **Live** |
-| 2 | AI Security Brain | SENTINEL X | 4 | Designed |
+| 2 | Security Brain | SENTINEL X | 4 | **Live** (deterministic) |
 | 3 | Threat Intelligence Center | NEXUS ZERO | 3 | **Live** |
 | 4 | Network Security Monitor | NEXUS ZERO | 3 | **Live** |
 | 5 | Vulnerability Intelligence | NEXUS ZERO | 3 | **Live** |
@@ -112,7 +112,7 @@ sequenceDiagram
 | 11 | Device Management | AEGIS ONE | 2 | **Live** |
 | 12 | Incident Response Center | SENTINEL X | 5 | Designed |
 | 13 | Digital Forensics Lab | SENTINEL X | 5 | Designed |
-| 14 | Autonomous Agent Center | SENTINEL X | 4 | Designed |
+| 14 | Agent Center | SENTINEL X | 4 | **Live** |
 | 15 | Workflow Automation | SENTINEL X | 8 | Designed |
 | 16 | Reports & Analytics | SENTINEL X | 5 | Designed |
 | 17 | Organization Management | Admin | 1 | **Live** |
@@ -125,39 +125,46 @@ sequenceDiagram
 Every module already has its database tables (tenant-isolated) and a navigation entry. Planned
 modules render an explicit roadmap page with no interactive controls.
 
-## 5. AI agent architecture (designed — Phase 4)
+## 5. Security Brain (implemented — Phase 4)
 
 ```mermaid
 flowchart LR
-    ev[Event / analyst request] --> norm[1-2 Validate & normalise]
-    norm --> cat[3 Categorise]
-    cat --> evid[4 Collect evidence<br/>tenant-scoped reads only]
-    evid --> rules[5 Deterministic checks<br/>rules · TI look-ups · CVE/KEV]
-    rules --> orch{6 Orchestrator}
-    orch --> a1[Threat Hunter]
-    orch --> a2[Phishing]
-    orch --> a3[Network Analyst]
-    orch --> a4[Malware Intel]
-    orch --> a5[Vulnerability]
-    orch --> a6[Vision / IoT]
-    a1 & a2 & a3 & a4 & a5 & a6 --> score[7 Risk score<br/>deterministic weights + AI confidence]
-    score --> inv[8 Investigation record<br/>verified_findings ≠ ai_assessment]
-    inv --> plan[9 Response Planning agent<br/>proposes actions only]
-    plan --> gate{10 Impact ≥ medium?}
-    gate -- yes --> appr[Human approval]
-    gate -- no --> exec[Allow-listed executor]
-    appr --> exec
-    exec --> audit[11 Audit trail · agent_runs · agent_decisions]
+    trig[New alert<br/>or analyst request] --> orch{Orchestrator}
+    orch -->|resolve subject| tb[(Read-only toolbox<br/>tenant-scoped · traced)]
+    orch --> plan[Plan by subject]
+    plan --> t[Alert Triage] & d[Device Risk] & x[Network Exposure] & i[Threat-Intel] & p[Posture]
+    t & d & x & i & p -. reads only .-> tb
+    t & d & x & i & p --> score[Weighted scoring model<br/>points · coverage · level · priority]
+    score --> book[Playbook<br/>advice only]
+    book --> store[agent_runs · agent_decisions<br/>report · trace]
+    store --> out[Audit log · WebSocket · UI]
 ```
 
-* **Provider abstraction**: `LLMProvider` interface with `none` (rules only), `ollama` (local,
-  free) and hosted providers configured purely through environment variables.
-* **Tooling boundary**: agents receive *read-only, tenant-scoped* tool functions (query events,
-  look up an indicator). They cannot execute shell commands, open network connections to targets,
-  or write anything except their own `agent_runs`/`agent_decisions` rows.
-* **Prompt-injection posture**: event content is passed as data, never as instructions; agent
-  output is parsed into a strict schema, and any proposed action is validated against an
-  allow-list before it can even be shown for approval.
+| Subject | Agents | Scoring factors (max points) |
+|---|---|---|
+| `alert` | triage, device, exposure, intel | severity 50 · corroboration 15 · device condition 10 · exposure 10 · threat intel 15 |
+| `device` | device, exposure, intel | state 20 · open alerts 30 · event activity 15 · exposure 20 · threat intel 15 |
+| `organization` | posture, exposure, intel | open alerts 30 · backlog 10 · fleet health 20 · exposure 20 · threat intel 20 |
+
+* **Engine**: `AI_PROVIDER=none` is the only value accepted, so the platform can never silently
+  claim an AI model analysed data. Decisions are stored with `is_ai_generated = false`. A future
+  model provider would only add narrative text, stored and labelled separately; it would never
+  replace scores, findings or evidence.
+* **Tool boundary** (`app/brain/toolbox.py`): agents receive a `Toolbox`, never the session. Every
+  query filters on the run's organization (RLS is the second wall). Tools return plain dictionaries,
+  run with autoflush off, and the run is aborted if the session gains pending changes. A static
+  test forbids writes, raw SQL, shell, and network imports in tools and agents. Each call is
+  traced with named arguments, row count and duration.
+* **Scoring** (`app/brain/scoring.py`): fixed models that total 100 points. A factor without
+  input data scores 0 and lowers the reported **coverage**, so a quiet result with low coverage
+  reads as "unknown", not "safe". Levels: critical 75+, high 50+, medium 25+, low 10+; alert
+  priority is P1-P4.
+* **Automatic triage**: event ingestion analyses each new alert inside a savepoint; errors are
+  logged and never block ingestion (`BRAIN_AUTO_TRIAGE`).
+* **Outputs**: a run stores the factor breakdown, findings with evidence references, playbook
+  recommendations (system-changing ones are flagged for human approval — nothing is executed), the
+  tool trace and a Markdown report. A device's latest score is written to `devices.risk_score`; an
+  alert keeps its detection score, and the latest triage is shown next to it.
 
 ## 6. Autonomous defense engine (designed — Phase 5/8)
 
@@ -253,7 +260,7 @@ flowchart LR
 | Provenance | Each finding records `source` and `kind`: `intel` (an external source or the org's watchlist said so), `heuristic` (a local deterministic rule) or `context` (neutral fact). The UI shows them in separate columns. |
 | Honesty | Every source is listed as consulted, not configured, unavailable or skipped. Without positive evidence the verdict is "No known threat found", never "safe". |
 | Scoring | Sum of finding weights capped at 100; any high/critical `intel` finding sets the floor at 85 and the verdict to malicious; ≥ 70 malicious, ≥ 35 suspicious. |
-| AI | Not used in Phase 3. `ai_assessment` is reserved for Phase 4 and will be labelled. |
+| AI | Not used. The Security Brain (Phase 4) is deterministic; `ai_assessment` stays empty while no AI model is configured. |
 | Network scope | The platform never scans. Operators import their own Nmap XML; hosts outside declared scopes are discarded; scopes larger than /16 (/48 IPv6) are refused; public ranges need an explicit authorization attestation (audited). |
 
 ## 9. Repository layout
@@ -264,6 +271,8 @@ sentinel-x-aegis-nexus/
 │   ├── app/
 │   │   ├── api/                 deps.py (auth, tenancy, RBAC) · v1/routes/*
 │   │   ├── core/                config · security · errors · logging · middleware · rate_limit
+│   │   ├── brain/               Security Brain: orchestrator · agents · toolbox (read-only) ·
+│   │   │                        scoring · playbook · report · engine
 │   │   ├── intel/               NEXUS ZERO: client (allow-list) · providers · url · domain · ip ·
 │   │   │                        hashes · email_headers · lookalike · vulns (KEV/NVD) · findings
 │   │   ├── db/                  declarative base · session + RLS tenant binding
@@ -272,7 +281,8 @@ sentinel-x-aegis-nexus/
 │   │   ├── schemas/             Pydantic request/response models
 │   │   └── services/            auth · organizations · dashboard · audit · health ·
 │   │                            devices · events (rules) · realtime (hub) · sweeper
-│   ├── alembic/versions/        0001 initial schema (tables, RLS, trigger, seed) · 0002 devices & events
+│   ├── alembic/versions/        0001 schema, RLS, trigger, seed · 0002 devices & events · 0003 intel ·
+│   │                            0004 pinned search_path · 0005 Security Brain
 │   ├── scripts/                 start.sh · postgres/create_app_role.sql
 │   ├── tests/                   pytest (SQLite + PostgreSQL/RLS)
 │   └── Dockerfile

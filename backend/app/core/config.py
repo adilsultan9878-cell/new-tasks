@@ -96,6 +96,14 @@ class Settings(BaseSettings):
     intel_offline: bool = False  # disable all outbound intel calls (air-gapped labs)
     rate_limit_investigations_per_minute: int = 20
 
+    # --- Security Brain (Phase 4) -----------------------------------------------------------
+    # "none" = deterministic engine only. No model provider ships in this release; the value is
+    # validated so a typo cannot silently pretend an AI model is analysing your data.
+    ai_provider: Literal["none"] = "none"
+    brain_auto_triage: bool = True  # analyse every new alert automatically (deterministic, cheap)
+    brain_lookback_days: int = Field(default=7, ge=1, le=90)
+    rate_limit_brain_per_minute: int = 30
+
     # --- Realtime ----------------------------------------------------------------------------
     ws_auth_timeout_seconds: int = 10
     ws_ping_interval_seconds: int = 25

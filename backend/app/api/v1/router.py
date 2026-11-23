@@ -4,6 +4,7 @@ from app.api.v1.routes import (
     agent,
     audit,
     auth,
+    brain,
     dashboard,
     devices,
     events,
@@ -28,3 +29,4 @@ api_router.include_router(agent.router)
 api_router.include_router(realtime.router)
 api_router.include_router(intel.router)
 api_router.include_router(network.router)
+api_router.include_router(brain.router)

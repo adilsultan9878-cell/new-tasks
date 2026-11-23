@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Activity, ChevronLeft, ChevronRight, Plus, ShieldAlert } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
@@ -18,6 +19,7 @@ import type { Alert, IngestResult, Page, SecurityEvent, SecurityEventDetail } fr
 import { useOrg } from '@/org/OrgContext'
 import { qk } from '@/org/queries'
 import { useRealtime } from '@/realtime/RealtimeProvider'
+import { AnalyzeButton, PriorityBadge, RiskBadge } from '@/pages/brain/shared'
 
 const PAGE = 50
 const CATEGORIES = ['network', 'auth', 'malware', 'phishing', 'system', 'agent', 'policy', 'iot', 'vision', 'other']
@@ -67,13 +69,14 @@ export function EventsPage() {
       />
 
       {!!alerts.data?.length && (
-        <Panel className="mb-5" title={<span className="flex items-center gap-2"><ShieldAlert className="size-4 text-critical" /> Open alerts</span>} description="Raised by detection rules · full alert workflow arrives with the Incident Response Center (Phase 5)" flush>
+        <Panel className="mb-5" title={<span className="flex items-center gap-2"><ShieldAlert className="size-4 text-critical" /> Open alerts</span>} description="Raised by detection rules and triaged automatically by the Security Brain · full alert workflow arrives with the Incident Response Center (Phase 5)" flush>
           <ul className="divide-y divide-line">
             {alerts.data.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center gap-3 px-5 py-2.5 text-sm">
                 <SeverityBadge severity={a.severity} />
                 <button className="min-w-0 flex-1 truncate text-left text-fg hover:underline" onClick={() => a.event_id && setSelected(a.event_id)}>{a.title}</button>
                 <span className="font-mono text-[11px] text-fg-subtle">{a.detection_rule}</span>
+                <TriageCell alert={a} />
                 <span className="text-xs text-fg-subtle">{relativeTime(a.created_at)}</span>
               </li>
             ))}
@@ -203,6 +206,7 @@ function EventDetailDialog({ eventId, onClose }: { eventId: string; onClose: () 
                     <SeverityBadge severity={a.severity} />
                     <span className="text-fg">{a.title}</span>
                     <span className="font-mono text-[11px] text-fg-subtle">rule: {a.detection_rule}</span>
+                    <TriageCell alert={a} />
                     {a.description && <span className="w-full text-xs text-fg-muted">{a.description}</span>}
                   </li>
                 ))}
@@ -282,4 +286,19 @@ function ReportEventDialog({ open, onClose }: { open: boolean; onClose: () => vo
       </form>
     </Dialog>
   )
+}
+
+/** Latest Security Brain triage of an alert, or a button to run one. */
+function TriageCell({ alert }: { alert: Alert }) {
+  const { orgId, can } = useOrg()
+  const t = alert.triage
+  if (t && can('brain:read')) {
+    return (
+      <Link to={`/org/${orgId}/brain/runs/${t.run_id}`} className="inline-flex items-center gap-1.5 rounded-md hover:opacity-80" title="Open the Security Brain triage">
+        <PriorityBadge priority={t.priority} />
+        <RiskBadge level={t.risk_level} score={t.risk_score} />
+      </Link>
+    )
+  }
+  return <AnalyzeButton subjectType="alert" subjectId={alert.id} label="Triage" variant="ghost" />
 }

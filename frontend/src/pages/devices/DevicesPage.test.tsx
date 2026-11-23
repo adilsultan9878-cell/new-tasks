@@ -9,7 +9,7 @@ import { DevicesPage } from './DevicesPage'
 
 const device: Device = {
   id: 'd1', name: 'Finance laptop', device_type: 'workstation', hostname: 'fin-01', os: 'Windows 11',
-  ip_address: '10.0.0.5', mac_address: null, status: 'online', enrollment_status: 'enrolled', health_score: 92,
+  ip_address: '10.0.0.5', mac_address: null, status: 'online', enrollment_status: 'enrolled', health_score: 92, risk_score: null,
   agent_version: '0.2.0', enrolled_at: '2026-11-20T10:00:00Z', last_seen_at: new Date().toISOString(),
   is_simulated: false, created_at: '2026-11-20T10:00:00Z',
 }

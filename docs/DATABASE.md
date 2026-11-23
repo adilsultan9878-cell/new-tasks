@@ -128,7 +128,7 @@ erDiagram
 | | `threat_indicators` | IOCs with source attribution and `is_verified` | ✔ |
 | | `vulnerability_records` | global CVE cache from NVD / CISA KEV (public data) | — |
 | Forensics | `evidence` | evidence items with SHA-256 and chain of custody | ✔ |
-| AI | `agent_runs`, `agent_decisions` | every agent execution and decision, with confidence | ✔ |
+| AI | `agent_runs`, `agent_decisions` | every Security Brain run (subject, weighted factors, coverage, tool trace, report) and each decision, flagged `is_ai_generated` | ✔ |
 | Response | `response_actions` | proposed/approved/executed actions + rollback plan | ✔ |
 | | `approvals` | human approval records | ✔ |
 | Automation | `integrations` | external integrations (non-secret config + `secret_ref`) | ✔ |
@@ -196,6 +196,7 @@ applied through Supabase's SQL Editor when there is no direct connection.
 | `0002` | device enrollment tokens and event-ingestion columns |
 | `0003` | network scopes, investigation timeline/details, intel and network permissions |
 | `0004` | pinned `search_path` on the RLS helper and audit trigger functions |
+| `0005` | Security Brain: `agent_runs` subject, creator, risk score/level, coverage, factors, trace and report; `agent_decisions` agent and severity; permissions `brain:read` / `brain:run` |
 
 Migrations never import application models for data changes (seed data is frozen inside the
 migration), so old migrations keep working as the models evolve. A test asserts the seeded

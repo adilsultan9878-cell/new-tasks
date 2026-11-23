@@ -19,7 +19,8 @@ describe('EventsPage', () => {
     mockApi({
       '/events?': { items: [event], total: 1, limit: 50, offset: 0 },
       '/alerts': [{ id: 'a1', event_id: 'e1', title: 'Backdoor port opened', description: null, severity: 'high',
-        status: 'open', risk_score: 75, detection_rule: 'severity-threshold', created_at: new Date().toISOString() }],
+        status: 'open', risk_score: 75, detection_rule: 'severity-threshold', created_at: new Date().toISOString(),
+        triage: { run_id: 'r9', risk_score: 58, risk_level: 'high', priority: 'P2', created_at: new Date().toISOString() } }],
       '/events/e1': { ...event, description: null, raw: { port: 4444 }, normalized: { event: { kind: 'alert' } },
         alerts: [{ id: 'a1', event_id: 'e1', title: 'Backdoor port opened', description: 'High network event.',
           severity: 'high', status: 'open', risk_score: 75, detection_rule: 'severity-threshold', created_at: '' }] },
@@ -28,6 +29,8 @@ describe('EventsPage', () => {
     expect(await screen.findByText(event.title)).toBeInTheDocument()
     expect(screen.getByText('×3')).toBeInTheDocument()
     expect(screen.getByText('Backdoor port opened')).toBeInTheDocument()
+    // The Security Brain's automatic triage links to the full analysis.
+    expect(screen.getByRole('link', { name: /P2/ })).toHaveAttribute('href', '/org/11111111-1111-1111-1111-111111111111/brain/runs/r9')
 
     await userEvent.click(screen.getByRole('row', { name: /Open event New listening port/ }))
     expect(await screen.findByText('Alerts raised by this event')).toBeInTheDocument()

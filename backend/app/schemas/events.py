@@ -105,6 +105,14 @@ class EventOut(APIModel):
     is_simulated: bool
 
 
+class TriageSummary(APIModel):
+    run_id: uuid.UUID
+    risk_score: int | None
+    risk_level: str | None
+    priority: str | None
+    created_at: datetime
+
+
 class AlertOut(APIModel):
     id: uuid.UUID
     event_id: uuid.UUID | None
@@ -115,6 +123,8 @@ class AlertOut(APIModel):
     risk_score: int | None
     detection_rule: str | None
     created_at: datetime
+    # Latest Security Brain triage of this alert (null until analysed).
+    triage: TriageSummary | None = None
 
 
 class EventDetail(EventOut):
