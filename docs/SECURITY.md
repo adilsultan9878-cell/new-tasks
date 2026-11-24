@@ -138,6 +138,18 @@ flowchart LR
 | Hostile evidence files | a script or executable uploaded as evidence | never executed or rendered; downloads are `application/octet-stream` + `nosniff` + `attachment`, filenames sanitised; 5 MB limit |
 | Cross-tenant access | rolling back another organization's action | every lookup is scoped to the caller's organization (404) with RLS underneath |
 
+## Phase 6 additions: sensors and cameras
+
+| Threat | Example | Control (implemented, tested) |
+|---|---|---|
+| Remote control of hardware | a compromised server or response tells a board to run code | hubs receive only `led` / `buzzer` on/off state; the firmware ignores anything else and executes nothing |
+| Surveillance creep | cameras streaming video or recognising people | detections only, no identity recognition; detection off for new cameras; snapshots opt-in, people pixelated, retention + deletion, views audited |
+| Leaking camera credentials | an RTSP password stored in the cloud | the camera source stays on the local machine (environment variable), never sent |
+| Hostile payloads | malformed MQTT messages or fake "images" | strict topic/key/value validation, size limits; snapshots must be JPEG/PNG under 1 MB |
+| Unauthenticated sensors | anyone on the LAN publishing readings | Mosquitto profile refuses anonymous clients; hubs need their own device credential |
+| Fake data passed off as real | simulator readings in reports | `is_simulated` on every simulated record, labelled in the UI, excluded from metrics |
+| Weak TLS on microcontrollers | MicroPython does not verify certificates | documented; use trusted networks or the MQTT bridge (which verifies certificates) |
+
 ## Reporting a vulnerability
 
 Please do not open public issues for security problems. Email the maintainer privately with steps

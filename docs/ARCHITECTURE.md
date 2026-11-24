@@ -106,8 +106,8 @@ sequenceDiagram
 | 5 | Vulnerability Intelligence | NEXUS ZERO | 3 | **Live** |
 | 6 | Phishing & URL Analyzer | NEXUS ZERO | 3 | **Live** |
 | 7 | File & Hash Analyzer | NEXUS ZERO | 3 | **Live** |
-| 8 | Computer Vision Security | AEGIS ONE | 6 | Designed |
-| 9 | IoT Device Security | AEGIS ONE | 6 | Designed |
+| 8 | Computer Vision Security | AEGIS ONE | 6 | **Live** |
+| 9 | IoT Device Security | AEGIS ONE | 6 | **Live** |
 | 10 | Digital Twin | AEGIS ONE | 7 | Designed |
 | 11 | Device Management | AEGIS ONE | 2 | **Live** |
 | 12 | Incident Response Center | SENTINEL X | 5 | **Live** |
@@ -201,6 +201,27 @@ stateDiagram-v2
   evidence item and the start of its chain of custody cannot change (PostgreSQL triggers).
 * The local agent still accepts only allow-listed *configuration* — never commands.
 
+## 6b. AEGIS ONE — sensors and cameras (implemented — Phase 6)
+
+```mermaid
+flowchart LR
+    esp[ESP32 MicroPython hub] -- HTTPS + device token --> api
+    board[Arduino / ESP32] -- MQTT user/pass --> broker[(Mosquitto)] --> bridge[sentinel-agent mqtt-bridge] -- HTTPS --> api
+    cam[USB / RTSP camera] --> camagent[sentinel-agent camera<br/>OpenCV: motion · HOG person · zones] -- detections only --> api
+    api[(SENTINEL X API)] -- desired LED / buzzer state --> esp & bridge
+    api -- camera settings: detection, zones, privacy --> camagent
+    api --> events[Events → alerts → Security Brain triage]
+```
+
+* Hubs and camera agents are ordinary enrolled devices; sensors and cameras register on first report.
+* Thresholds → `iot.threshold_breach` / `iot.threshold_recovered` events; actuators follow per-sensor
+  rules or a timed manual override. Hubs receive *state*, never commands.
+* Cameras start with detection **off**; video stays on site; there is no identity recognition.
+  Snapshots require privacy mode off, are pixelated around people by default, expire with the
+  camera's retention and are purged when privacy mode is turned back on.
+* The simulator creates a credential-less, `is_simulated` hub, sensors and camera that the Command
+  Center ignores.
+
 ## 7. Security Event Engine (implemented — Phase 2)
 
 ```mermaid
@@ -281,6 +302,8 @@ sentinel-x-aegis-nexus/
 │   ├── app/
 │   │   ├── api/                 deps.py (auth, tenancy, RBAC) · v1/routes/*
 │   │   ├── core/                config · security · errors · logging · middleware · rate_limit
+│   │   ├── aegis/               AEGIS ONE: iot (readings, thresholds, actuators) · vision ·
+│   │   │                        simulator
 │   │   ├── soc/                 SOC: incidents · actions (allow-list, approvals, emergency stop) ·
 │   │   │                        evidence (SHA-256, custody) · reports
 │   │   ├── brain/               Security Brain: orchestrator · agents · toolbox (read-only) ·
@@ -295,7 +318,7 @@ sentinel-x-aegis-nexus/
 │   │                            devices · events (rules) · realtime (hub) · sweeper
 │   ├── alembic/versions/        0001 schema, RLS, trigger, seed · 0002 devices & events · 0003 intel ·
 │   │                            0004 pinned search_path · 0005 Security Brain ·
-│   │                            0006 SOC
+│   │                            0006 SOC · 0007 AEGIS ONE
 │   ├── scripts/                 start.sh · postgres/create_app_role.sql
 │   ├── tests/                   pytest (SQLite + PostgreSQL/RLS)
 │   └── Dockerfile
@@ -310,7 +333,8 @@ sentinel-x-aegis-nexus/
 │   ├── functions/api/           Cloudflare Pages reverse proxy
 │   ├── e2e/                     Playwright end-to-end tests
 │   └── Dockerfile · nginx.conf
-├── agent/                       Python local security agent (sentinel-agent CLI) + tests
+├── agent/                       Python local security agent (sentinel-agent CLI: agent, camera, mqtt-bridge) + tests
+├── firmware/micropython/        ESP32 sensor hub
 ├── docker/postgres/             init script for the least-privileged DB role
 ├── docs/                        architecture · database · security · deployment · roadmap
 ├── docker-compose.yml · render.yaml

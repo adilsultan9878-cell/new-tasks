@@ -18,10 +18,9 @@ and **human-approved** automated defense. It is built phase by phase. Every feat
 is implemented end to end and covered by automated tests. Nothing in the UI is a mock or a fake
 counter.
 
-> **Status: Phase 5 (SENTINEL X SOC) complete — v0.5.0.** Phases 1-4 shipped in v0.1.0-v0.4.0;
-> Phase 6 (AEGIS ONE: computer vision and IoT) is next. The console was simplified in this release:
-> only working modules are in the sidebar, everything planned is on the "What's next" page.
-> See [docs/ROADMAP.md](docs/ROADMAP.md) for the full list of completed and pending features.
+> **Status: Phase 6 (AEGIS ONE) complete — v0.6.0.** Phases 1-5 shipped in v0.1.0-v0.5.0;
+> Phase 7 (Digital Twin) is next. Only working modules are in the sidebar; everything planned is on
+> the "What's next" page. See [docs/ROADMAP.md](docs/ROADMAP.md) for the full list.
 
 ## What works today
 
@@ -49,6 +48,8 @@ counter.
 | 🚨 **Incident Response** | Turn alerts into incidents (`INC-2026-0001`), move them through six statuses, assign and take notes on an append-only timeline. Response actions come from a fixed allow-list: notify responders, heighten monitoring, block an IP/domain/hash, revoke a device, suspend a member. Medium and high impact actions need an approver (high: a second person), can be rolled back where possible, and an **emergency stop** holds everything. |
 | 🔬 **Forensics Lab** | Evidence vault: files and notes are hashed (SHA-256) in your browser and on the server, stored immutably, and every download or verification is added to the chain of custody. Large material can be registered by hash. |
 | 📑 **Reports** | Incident reports and executive summaries (time to acknowledge, time to resolve, false-positive rate, actions, riskiest devices), built only from your records and downloadable as Markdown. |
+| 📟 **IoT Security** | ESP32 / Arduino boards report sensors (directly, or through a local MQTT broker and the agent's bridge). Out-of-range readings raise alerts and can switch the board's LED or buzzer on; you can also switch them for a while by hand. A MicroPython firmware is included, and a clearly labelled **simulator** lets you try everything without hardware. |
+| 📷 **Computer Vision** | The agent watches a camera with OpenCV and reports motion, people and people inside the restricted zones you draw — video stays on your computer and nothing identifies anyone. Detection starts off; snapshots are opt-in, blurred and expire. |
 | 🗺️ **Roadmap pages** | Modules that are not built yet show what they will do and which phase delivers them. They contain no fake buttons. |
 
 ## Architecture at a glance
@@ -137,11 +138,11 @@ The Threat Intelligence page shows which sources are configured.
 
 | Suite | Command | Covers |
 |---|---|---|
-| Backend (SQLite) | `cd backend; pytest` | health, auth, organizations, RBAC, tenant isolation, enrollment, device auth, ingestion, detection rules, sweeper, WebSocket, real agent ↔ live server, investigations (URL/domain/IP/hash/email), SSRF guard, KEV/NVD, scopes, Nmap import, Security Brain agents, scoring and read-only guards, incidents, approvals, emergency stop, evidence and reports (124 tests) |
-| Backend (PostgreSQL + RLS) | `$env:TEST_DATABASE_URL="postgresql://postgres:<pw>@localhost:5432/postgres"; pytest` | everything above, run as the least-privileged DB role, plus RLS proofs for every tenant table and evidence immutability triggers (132 tests) |
-| Agent | `cd agent; python -m pytest` | config allow-list, no-command-execution guard, collectors, detectors, offline spool, revocation (19 tests; CI runs them on Linux **and Windows**) |
-| Frontend unit/component | `cd frontend; npm test` | API client, session refresh, sidebar RBAC, dashboard, devices, events, live WebSocket client, Pages proxy, investigation view, Security Brain, roadmap and SOC pages (35 tests) |
-| End-to-end (Playwright) | `cd frontend; npx playwright install chromium; npx playwright test` | sign-up → org → dashboard → sign-in again; tenant isolation and RBAC; **real agent enrolled from the console, shown live, then revoked**; high-severity report → alert toast; phishing analysis → alert; Nmap import respects scopes; new alert auto-triaged by the Security Brain, organization analysis and report download; alert → incident → approved block → evidence → report, and the emergency stop (11 tests, intel providers offline for determinism) |
+| Backend (SQLite) | `cd backend; pytest` | health, auth, organizations, RBAC, tenant isolation, enrollment, device auth, ingestion, detection rules, sweeper, WebSocket, real agent ↔ live server, investigations (URL/domain/IP/hash/email), SSRF guard, KEV/NVD, scopes, Nmap import, Security Brain agents, scoring and read-only guards, incidents, approvals, emergency stop, evidence and reports, IoT hubs, actuators, vision privacy, simulator, live bridge/camera protocol (131 tests) |
+| Backend (PostgreSQL + RLS) | `$env:TEST_DATABASE_URL="postgresql://postgres:<pw>@localhost:5432/postgres"; pytest` | everything above, run as the least-privileged DB role, plus RLS proofs for every tenant table and evidence immutability triggers (139 tests) |
+| Agent | `cd agent; python -m pytest` | config allow-list, no-command-execution guard, collectors, detectors, offline spool, revocation, OpenCV camera monitor, MQTT bridge, ESP32 firmware with fake hardware (29 tests; CI runs them on Linux **and Windows**) |
+| Frontend unit/component | `cd frontend; npm test` | API client, session refresh, sidebar RBAC, dashboard, devices, events, live WebSocket client, Pages proxy, investigation view, Security Brain, roadmap, SOC, IoT and vision pages (38 tests) |
+| End-to-end (Playwright) | `cd frontend; npx playwright install chromium; npx playwright test` | sign-up → org → dashboard → sign-in again; tenant isolation and RBAC; **real agent enrolled from the console, shown live, then revoked**; high-severity report → alert toast; phishing analysis → alert; Nmap import respects scopes; new alert auto-triaged by the Security Brain, organization analysis and report download; alert → incident → approved block → evidence → report, and the emergency stop; simulator → sensors, outputs, camera zone (12 tests, intel providers offline for determinism) |
 | Lint / types | `ruff check .` · `npm run lint` · `npm run typecheck` | |
 
 CI runs all of the above on every push ([.github/workflows/ci.yml](.github/workflows/ci.yml)).

@@ -103,11 +103,20 @@ published rules over the organization's own data. No AI model is used.
 | PDF export, compliance report templates | ⬜ | Markdown download today; print-to-PDF from the browser works |
 | Actions on external systems (firewall API, EDR) | ⬜ | needs explicitly configured integrations — Phase 8 |
 
-## Phase 6 — AEGIS ONE ⬜
+## Phase 6 — AEGIS ONE ✅ (v0.6.0)
 
-- Camera enrollment, OpenCV motion/object detection, restricted zones, snapshots, privacy controls (no identity recognition)
-- ESP32 / Arduino over authenticated MQTT, sensor thresholds, LED/buzzer triggers
-- Hardware simulator (records flagged `is_simulated`)
+| Feature | Status | Evidence |
+|---|---|---|
+| Sensor hubs report with their device credential; sensors register on first report; safe ranges with a severity raise breach / recovery events (high/critical → alerts, auto-triaged) | ✅ | `tests/test_aegis.py` |
+| LED and buzzer outputs: switched by per-sensor rules or a timed manual override; the hub receives state, never commands | ✅ | `test_hub_readings_thresholds_events_and_actuators`, `test_manual_actuator_override_wins_until_released` |
+| Camera agent (`sentinel-agent camera`): OpenCV MOG2 motion, HOG person shapes (no identity), restricted zones, cooldown; detections only | ✅ | `agent/tests/test_edge.py`, live test in `test_agent_integration.py` |
+| Privacy: new cameras start with detection off; snapshots only while privacy mode is off, people pixelated, JPEG/PNG checked, retention + deletion, purge when privacy mode returns, views audited | ✅ | `test_vision_is_off_until_enabled_and_respects_privacy`, `test_retention_purges_old_readings_and_expired_snapshots` |
+| MQTT bridge (`sentinel-agent mqtt-bridge`) with validated topics/payloads and retained actuator state; Mosquitto compose profile without anonymous access | ✅ | `test_mqtt_messages_are_validated`, `test_bridge_batches_forwards_and_publishes_actuator_state` |
+| ESP32 MicroPython hub firmware (DHT22, analog, digital sensors; LED/buzzer) | ✅ | `agent/tests/test_firmware.py` (CPython with fake hardware — not yet run on a physical board) |
+| Hardware simulator: credential-less, labelled hub, sensors and camera; excluded from metrics; removable | ✅ | `test_simulator_is_labelled_excluded_from_metrics_and_clearable`, e2e `aegis.spec.ts` |
+| Computer Vision and IoT Security pages (zone editor, privacy switches, outputs, sparklines) | ✅ | `IotPage.test.tsx`, e2e |
+| Object classes beyond people (vehicles, packages) | ⬜ | needs a downloadable detection model (e.g. MobileNet-SSD); HOG covers people only |
+| Firmware verified on real hardware | ⬜ | test on an ESP32 before production use |
 
 ## Phase 7 — Digital Twin ⬜
 

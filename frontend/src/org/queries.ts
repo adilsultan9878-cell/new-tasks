@@ -38,6 +38,11 @@ export const qk = {
   evidence: (orgId: string, params: Record<string, unknown>) => ['evidence', orgId, params] as const,
   reports: (orgId: string) => ['reports', orgId, 'list'] as const,
   report: (orgId: string, id: string) => ['reports', orgId, 'detail', id] as const,
+  sensors: (orgId: string) => ['sensors', orgId] as const,
+  sensorReadings: (orgId: string, id: string, hours: number) => ['sensors', orgId, 'readings', id, hours] as const,
+  hubs: (orgId: string) => ['hubs', orgId] as const,
+  cameras: (orgId: string) => ['cameras', orgId] as const,
+  snapshots: (orgId: string, cameraId: string) => ['cameras', orgId, 'snapshots', cameraId] as const,
 }
 
 export function useMemberships(enabled = true) {

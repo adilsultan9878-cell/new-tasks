@@ -255,9 +255,22 @@ on sub-domains of one custom domain (`app.example.com` / `api.example.com`, `Sam
 | `BRAIN_LOOKBACK_DAYS` | `7` | event window the Brain's agents read (1-90) |
 | `RATE_LIMIT_BRAIN_PER_MINUTE` | `30` | manual analyses per user |
 | `APPROVAL_TTL_HOURS` | `24` | pending approvals of response actions expire after this (1-168) |
+| `SENSOR_READING_RETENTION_DAYS` | `7` | sensor readings older than this are purged by the background sweeper |
+| `CAMERA_SNAPSHOT_MAX_BYTES` | `1000000` | per camera snapshot (JPEG/PNG only, only while a camera's privacy mode is off) |
+| `VISION_EVENT_COOLDOWN_SECONDS` | `30` | the camera agent reports the same detection type at most this often |
 | `EVIDENCE_MAX_BYTES` | `5000000` | per evidence file; files live in the database (count them against the Supabase free quota), larger material is registered by hash |
 
 ---
+
+## Optional: local MQTT broker for sensor boards
+
+```powershell
+docker run --rm -it -v ${PWD}/docker/mosquitto:/m eclipse-mosquitto:2 mosquitto_passwd -c /m/passwd bridge
+docker compose --profile iot up -d mosquitto
+```
+
+Boards publish to `sentinel/<board>/readings`; run `sentinel-agent mqtt-bridge` on an enrolled
+computer next to the broker (see `agent/README.md`). Anonymous MQTT clients are refused.
 
 ## Free-tier limitations (check the providers' current pricing pages)
 

@@ -14,7 +14,7 @@ describe('Sidebar', () => {
     const live = MODULES.filter((x) => x.status === 'live' && (!x.permission || m.permissions.includes(x.permission)))
     const planned = MODULES.filter((x) => x.status === 'planned')
     expect(within(nav).getAllByRole('link')).toHaveLength(live.length + 1)
-    expect(within(nav).queryByRole('link', { name: /Computer Vision/ })).not.toBeInTheDocument()
+    expect(within(nav).queryByRole('link', { name: /Digital Twin/ })).not.toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: /What's next/ })).toHaveTextContent(String(planned.length))
     expect(within(nav).getByRole('link', { name: /What's next/ })).toHaveAttribute('href', `/org/${m.organization.id}/roadmap`)
     expect(within(nav).getByRole('link', { name: 'Command Center' })).toHaveAttribute('href', `/org/${m.organization.id}`)

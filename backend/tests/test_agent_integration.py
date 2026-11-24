@@ -91,18 +91,29 @@ def test_edge_components_against_the_live_api(live_server, fleet):
     from sentinel_agent.vision import Box, CameraMonitor
 
     org = f"/api/v1/organizations/{fleet.org_id}"
-    assert cli.main(["enroll", "--server", live_server, "--token", fleet.token()["token"], "--name", "pi-gateway"]) == 0
+    assert (
+        cli.main(
+            ["enroll", "--server", live_server, "--token", fleet.token()["token"], "--name", "pi-gateway"]
+        )
+        == 0
+    )
     state = load_state()
     client = AgentClient(state.server_url, state.device_token)
 
     published: list[tuple[str, str]] = []
     bridge = Bridge(client, lambda topic, body: published.append((topic, body)))
-    bridge.on_message("sentinel/esp32-kitchen/readings", b'{"sensor_key": "gas", "sensor_type": "gas", "value": 90}')
+    bridge.on_message(
+        "sentinel/esp32-kitchen/readings", b'{"sensor_key": "gas", "sensor_type": "gas", "value": 90}'
+    )
     assert bridge.flush()["accepted"] == 1
     sensor = fleet.owner.get(f"{org}/sensors").json()[0]
     assert sensor["sensor_key"] == "esp32-kitchen-gas" and sensor["device_name"] == "pi-gateway"
-    fleet.owner.patch(f"{org}/sensors/{sensor['id']}", json={"thresholds": {"max": 300}, "actuator_rules": ["buzzer"]})
-    bridge.on_message("sentinel/esp32-kitchen/readings", b'{"sensor_key": "gas", "sensor_type": "gas", "value": 450}')
+    fleet.owner.patch(
+        f"{org}/sensors/{sensor['id']}", json={"thresholds": {"max": 300}, "actuator_rules": ["buzzer"]}
+    )
+    bridge.on_message(
+        "sentinel/esp32-kitchen/readings", b'{"sensor_key": "gas", "sensor_type": "gas", "value": 450}'
+    )
     bridge.flush()
     assert published[-1] == ("sentinel/esp32-kitchen/actuators", '{"led": false, "buzzer": true}')
 
@@ -121,9 +132,17 @@ def test_edge_components_against_the_live_api(live_server, fleet):
     monitor.refresh_config()
     assert monitor.config["detection_enabled"] is False and monitor.handle(Frame()) is None
     camera = fleet.owner.get(f"{org}/cameras").json()[0]
-    fleet.owner.patch(f"{org}/cameras/{camera['id']}", json={
-        "detection_enabled": True, "zones": [{"name": "Vault", "x": 0.6, "y": 0.0, "w": 0.4, "h": 1.0}]})
+    fleet.owner.patch(
+        f"{org}/cameras/{camera['id']}",
+        json={
+            "detection_enabled": True,
+            "zones": [{"name": "Vault", "x": 0.6, "y": 0.0, "w": 0.4, "h": 1.0}],
+        },
+    )
     monitor.refresh_config()
     result = monitor.handle(Frame())
     assert result["accepted"] == 3 and result["snapshot_stored"] is False
-    assert any(a["title"] == "Person in restricted zone 'Vault' (Lobby)" for a in fleet.owner.get(f"{org}/alerts").json())
+    assert any(
+        a["title"] == "Person in restricted zone 'Vault' (Lobby)"
+        for a in fleet.owner.get(f"{org}/alerts").json()
+    )

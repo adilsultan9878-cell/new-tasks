@@ -669,3 +669,87 @@ export interface IncidentDetail extends Incident {
   evidence: EvidenceItem[]
   reports: ReportSummary[]
 }
+
+// ------------------------------------------------------------------------ AEGIS ONE (Phase 6)
+export interface Sensor {
+  id: string
+  device_id: string | null
+  device_name: string | null
+  sensor_key: string | null
+  name: string
+  sensor_type: string
+  unit: string | null
+  status: string
+  thresholds: { min?: number; max?: number; severity?: string }
+  actuator_rules: ('led' | 'buzzer')[]
+  in_breach: boolean
+  last_value: number | null
+  last_reading_at: string | null
+  is_simulated: boolean
+}
+
+export interface ReadingPoint {
+  t: string
+  v: number
+}
+
+export interface ActuatorState {
+  on: boolean
+  source: 'manual' | 'rule' | 'idle'
+  until?: string
+  by?: string | null
+  because?: string[]
+}
+
+export interface Hub {
+  device_id: string
+  name: string
+  status: string
+  is_simulated: boolean
+  sensor_count: number
+  actuators: Record<'led' | 'buzzer', ActuatorState>
+}
+
+export interface Zone {
+  name: string
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+export interface Camera {
+  id: string
+  device_id: string | null
+  device_name: string | null
+  camera_key: string | null
+  name: string
+  status: string
+  detection_enabled: boolean
+  privacy_mode: boolean
+  blur_people: boolean
+  retention_days: number
+  zones: Zone[]
+  last_frame_at: string | null
+  last_event_at: string | null
+  snapshot_count: number
+  is_simulated: boolean
+}
+
+export interface Snapshot {
+  id: string
+  camera_id: string
+  event_type: string
+  content_type: string
+  captured_at: string
+  expires_at: string
+}
+
+export interface SimulatorResult {
+  hub_id: string
+  sensors: number
+  readings: number
+  breaches: number
+  detections: number
+  actuators: Record<string, boolean>
+}

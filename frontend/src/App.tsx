@@ -6,6 +6,8 @@ import { PublicOnly, RequireAuth } from '@/auth/guards'
 import { ApiError } from '@/lib/api'
 import { OrgShell, RootRedirect } from '@/org/OrgShell'
 import { ToastProvider } from '@/realtime/Toaster'
+import { IotPage } from '@/pages/aegis/IotPage'
+import { VisionPage } from '@/pages/aegis/VisionPage'
 import { AuditLogPage } from '@/pages/audit/AuditLogPage'
 import { AgentCenterPage } from '@/pages/brain/AgentCenterPage'
 import { BrainPage } from '@/pages/brain/BrainPage'
@@ -75,6 +77,8 @@ export const routes = [
           { path: 'incidents', element: <IncidentsPage /> },
           { path: 'incidents/:incidentId', element: <IncidentPage /> },
           { path: 'forensics', element: <ForensicsPage /> },
+          { path: 'vision', element: <VisionPage /> },
+          { path: 'iot', element: <IotPage /> },
           { path: 'reports', element: <ReportsPage /> },
           { path: 'reports/:reportId', element: <ReportPage /> },
           { path: 'organization', element: <OrganizationPage /> },

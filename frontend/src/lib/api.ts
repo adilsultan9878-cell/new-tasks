@@ -167,3 +167,9 @@ export async function downloadFile(path: string, fallbackName: string): Promise<
   link.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
+
+/** Fetch an authenticated binary (e.g. a camera snapshot) as an object URL; revoke it when done. */
+export async function fetchObjectUrl(path: string): Promise<string> {
+  const res = await authorizedRequest(path, {})
+  return URL.createObjectURL(await res.blob())
+}

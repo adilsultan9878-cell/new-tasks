@@ -30,6 +30,8 @@ export default defineConfig({
         ENVIRONMENT: 'development',
         JWT_SECRET: 'e2e-only-secret-not-for-production-use-0123456789',
         RATE_LIMIT_AUTH_PER_MINUTE: '200',
+        // The whole suite comes from one IP (127.0.0.1): raise the per-IP API budget for tests only.
+        RATE_LIMIT_DEFAULT_PER_MINUTE: '3000',
         // Deterministic CI: no calls to third-party intelligence services.
         INTEL_OFFLINE: 'true',
       },

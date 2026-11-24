@@ -59,7 +59,7 @@ export const MODULE_GROUPS: { key: ModuleGroupKey; label: string; caption: strin
 ]
 
 /** Highest phase that has shipped (drives the roadmap timeline). */
-export const COMPLETED_PHASE = 5
+export const COMPLETED_PHASE = 6
 
 export const PHASES: Record<number, string> = {
   1: 'Foundation',
@@ -163,16 +163,16 @@ export const MODULES: PlatformModule[] = [
     capabilities: ['Enrollment tokens', 'Per-device credentials', 'Live health & telemetry', 'Revocation'],
   },
   {
-    key: 'vision', name: 'Computer Vision Security', navName: 'Computer Vision', group: 'aegis', icon: Cctv, status: 'planned', phase: 6,
-    path: 'm/vision',
-    summary: 'OpenCV motion and object detection on enrolled cameras with restricted zones and privacy controls. No identity recognition.',
-    capabilities: ['Camera enrollment & health', 'Motion / object detection', 'Restricted-zone alerts', 'Timestamped snapshots'],
+    key: 'vision', name: 'Computer Vision Security', navName: 'Computer Vision', group: 'aegis', icon: Cctv, status: 'live', phase: 6,
+    path: 'vision', permission: 'devices:read',
+    summary: 'Motion, person and restricted-zone detection on your own computer with OpenCV. Detections only — no video, no identity recognition.',
+    capabilities: ['Camera agent with OpenCV', 'Restricted zones drawn in the console', 'Snapshots off by default, people blurred', 'Retention and deletion'],
   },
   {
-    key: 'iot', name: 'IoT Device Security', navName: 'IoT Security', group: 'aegis', icon: Cpu, status: 'planned', phase: 6,
-    path: 'm/iot',
-    summary: 'Arduino / ESP32 sensors over authenticated MQTT, with a built-in simulator for hardware-free testing.',
-    capabilities: ['MQTT with per-device credentials', 'Sensor telemetry & thresholds', 'Hardware alert triggers', 'Simulator (clearly labelled)'],
+    key: 'iot', name: 'IoT Device Security', navName: 'IoT Security', group: 'aegis', icon: Cpu, status: 'live', phase: 6,
+    path: 'iot', permission: 'devices:read',
+    summary: 'ESP32 / Arduino sensors with safe ranges, alerts and LED / buzzer outputs — directly over HTTPS or through a local MQTT broker. Includes a clearly labelled simulator.',
+    capabilities: ['Per-device credentials', 'Thresholds → alerts', 'LED and buzzer rules + manual switch', 'Simulator for hardware-free testing'],
   },
   {
     key: 'twin', name: 'Digital Twin', group: 'aegis', icon: Box, status: 'planned', phase: 7,
