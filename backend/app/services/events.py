@@ -238,6 +238,7 @@ def ingest(
     *,
     source: str,
     device: Device | None = None,
+    simulated: bool = False,
 ) -> IngestOutcome:
     settings = get_settings()
     now = _now()
@@ -294,6 +295,7 @@ def ingest(
             occurred_at=occurred,
             ingested_at=now,
             occurrence_count=1,
+            is_simulated=simulated,
         )
         db.add(event)
         db.flush()

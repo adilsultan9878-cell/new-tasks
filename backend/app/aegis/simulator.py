@@ -1,0 +1,172 @@
+"""Hardware simulator: a clearly labelled sensor hub and camera for trying AEGIS ONE without hardware.
+
+Every record it creates carries ``is_simulated = true``: it is excluded from Command Center metrics
+and labelled "Simulated" everywhere in the console. The simulated hub has no credential, so nothing
+can impersonate it. ``clear`` removes everything the simulator created.
+"""
+
+from __future__ import annotations
+
+import math
+import random
+import uuid
+from datetime import timedelta
+from typing import Any
+
+from fastapi import Request
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
+
+from app.aegis import iot, vision
+from app.models import AgentRun, Alert, Camera, Device, SecurityEvent, Sensor, SensorReading, User
+from app.services import audit, realtime
+from app.soc.common import now
+
+HUB_NAME = "Simulated sensor hub"
+SENSORS = (
+    # key, type, unit, thresholds, actuator rules, baseline, amplitude
+    ("server_room_temp", "temperature", "°C", {"max": 35, "severity": "high"}, ["led"], 24.0, 2.0),
+    ("server_room_gas", "gas", "ppm", {"max": 300, "severity": "critical"}, ["buzzer", "led"], 120.0, 25.0),
+    ("rack_door", "door", "open", {"max": 0.5, "severity": "medium"}, [], 0.0, 0.0),
+)
+
+
+def _hub(db: Session, org_id: uuid.UUID) -> Device:
+    hub = db.scalar(
+        select(Device).where(
+            Device.organization_id == org_id, Device.is_simulated.is_(True), Device.name == HUB_NAME
+        )
+    )
+    if hub is None:
+        hub = Device(
+            id=uuid.uuid4(),
+            organization_id=org_id,
+            name=HUB_NAME,
+            device_type="sensor_hub",
+            hostname="sim-hub",
+            os="simulator",
+            status="online",
+            enrollment_status="enrolled",
+            credential_hash=None,
+            health_score=100,
+            location={},
+            tags=["simulated"],
+            attributes={},
+            telemetry={},
+            config={},
+            is_simulated=True,
+        )
+        db.add(hub)
+        db.flush()
+    hub.last_seen_at = now()
+    hub.status = "online"
+    return hub
+
+
+def run(db: Session, request: Request, *, org_id: uuid.UUID, user: User) -> dict[str, Any]:
+    hub = _hub(db, org_id)
+    rng = random.Random(42)  # noqa: S311 — deterministic demo data, not security-relevant
+    start = now() - timedelta(hours=2)
+    readings: list[dict[str, Any]] = []
+    for key, kind, unit, thresholds, rules, base, amp in SENSORS:
+        sensor = iot._sensor(db, hub, key, kind, unit, True)
+        sensor.thresholds = thresholds
+        sensor.actuator_rules = rules
+        sensor.in_breach = False
+        for i in range(60):  # one reading every two minutes, quietly within limits
+            value = base + amp * math.sin(i / 6) + rng.uniform(-amp / 4, amp / 4) if amp else 0.0
+            db.add(
+                SensorReading(
+                    id=uuid.uuid4(),
+                    organization_id=org_id,
+                    sensor_id=sensor.id,
+                    value=round(value, 2),
+                    recorded_at=start + timedelta(minutes=2 * i),
+                )
+            )
+        readings.append({"sensor_key": key, "sensor_type": kind, "unit": unit, "value": base})
+    # The latest readings: the gas level spikes and the rack door opens.
+    readings[1]["value"] = 412.0
+    readings[2]["value"] = 1.0
+    outcome = iot.ingest(db, hub, readings, simulated=True)
+
+    camera = vision.get_or_register(db, hub, "lobby_camera", "Simulated lobby camera", simulated=True)
+    camera.detection_enabled = True
+    camera.zones = [{"name": "Server room door", "x": 0.6, "y": 0.2, "w": 0.3, "h": 0.6}]
+    seen = vision.ingest(
+        db,
+        hub,
+        camera_key="lobby_camera",
+        name=None,
+        simulated=True,
+        snapshot=None,
+        detections=[
+            {"type": "motion"},
+            {"type": "person", "confidence": 0.82, "objects": 1},
+            {"type": "zone_intrusion", "zone": "Server room door", "confidence": 0.82, "objects": 1},
+        ],
+    )
+    audit.record(
+        db,
+        "simulator.run",
+        request=request,
+        actor_id=user.id,
+        org_id=org_id,
+        target_type="device",
+        target_id=hub.id,
+        details={"readings": len(SENSORS) * 61, "breaches": outcome["breaches"]},
+    )
+    realtime.queue_broadcast(db, org_id, "device.updated", {"id": str(hub.id), "status": "online"})
+    return {
+        "hub_id": str(hub.id),
+        "sensors": len(SENSORS),
+        "readings": len(SENSORS) * 61,
+        "breaches": outcome["breaches"],
+        "detections": seen["accepted"],
+        "actuators": outcome["actuators"],
+    }
+
+
+def clear(db: Session, request: Request, *, org_id: uuid.UUID, user: User) -> dict[str, int]:
+    alert_ids = db.scalars(
+        select(Alert.id).where(Alert.organization_id == org_id, Alert.is_simulated.is_(True))
+    ).all()
+    if alert_ids:
+        db.execute(
+            delete(AgentRun).where(
+                AgentRun.organization_id == org_id,
+                AgentRun.subject_type == "alert",
+                AgentRun.subject_id.in_(alert_ids),
+            )
+        )
+    counts = {
+        "alerts": db.execute(
+            delete(Alert).where(Alert.organization_id == org_id, Alert.is_simulated.is_(True))
+        ).rowcount,
+        "events": db.execute(
+            delete(SecurityEvent).where(
+                SecurityEvent.organization_id == org_id, SecurityEvent.is_simulated.is_(True)
+            )
+        ).rowcount,
+        "sensors": db.execute(
+            delete(Sensor).where(Sensor.organization_id == org_id, Sensor.is_simulated.is_(True))
+        ).rowcount,
+        "cameras": db.execute(
+            delete(Camera).where(Camera.organization_id == org_id, Camera.is_simulated.is_(True))
+        ).rowcount,
+        "devices": db.execute(
+            delete(Device).where(Device.organization_id == org_id, Device.is_simulated.is_(True))
+        ).rowcount,
+    }
+    audit.record(
+        db,
+        "simulator.clear",
+        request=request,
+        actor_id=user.id,
+        org_id=org_id,
+        target_type="organization",
+        target_id=org_id,
+        details=counts,
+    )
+    realtime.queue_broadcast(db, org_id, "device.updated", {"cleared": True})
+    return counts

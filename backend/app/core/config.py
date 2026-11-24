@@ -108,6 +108,11 @@ class Settings(BaseSettings):
     approval_ttl_hours: int = Field(default=24, ge=1, le=168)  # pending approvals expire
     evidence_max_bytes: int = Field(default=5_000_000, ge=1, le=25_000_000)  # per evidence file
 
+    # --- AEGIS ONE: IoT sensors and cameras (Phase 6) ----------------------------------------
+    sensor_reading_retention_days: int = Field(default=7, ge=1, le=365)
+    camera_snapshot_max_bytes: int = Field(default=1_000_000, ge=10_000, le=5_000_000)
+    vision_event_cooldown_seconds: int = Field(default=30, ge=0, le=3600)  # dedup window per camera/type
+
     # --- Realtime ----------------------------------------------------------------------------
     ws_auth_timeout_seconds: int = 10
     ws_ping_interval_seconds: int = 25

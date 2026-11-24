@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.routes import (
+    aegis,
     agent,
     audit,
     auth,
@@ -32,3 +33,4 @@ api_router.include_router(intel.router)
 api_router.include_router(network.router)
 api_router.include_router(brain.router)
 api_router.include_router(soc.router)
+api_router.include_router(aegis.router)

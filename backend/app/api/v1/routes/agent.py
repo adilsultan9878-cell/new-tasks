@@ -6,13 +6,16 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.aegis import iot as iot_service
+from app.aegis import vision as vision_service
 from app.api.deps import DB
 from app.core.config import get_settings
 from app.core.rate_limit import auth_rate_limit, enforce
 from app.models import Device
+from app.schemas.aegis import CameraConfig, DetectionBatch, DetectionResult, ReadingBatch, ReadingResult
 from app.schemas.devices import (
     AgentConfig,
     EnrollRequest,
@@ -97,3 +100,45 @@ def unenroll(device: CurrentDevice, request: Request, db: DB) -> Response:
     device_service.decommission(db, request, device, actor_id=None, reason="agent uninstalled")
     db.commit()
     return Response(status_code=204)
+
+
+# ------------------------------------------------------------------ AEGIS ONE (Phase 6) — hubs
+@router.post("/sensors/readings", response_model=ReadingResult)
+def sensor_readings(body: ReadingBatch, device: CurrentDevice, db: DB) -> ReadingResult:
+    """Readings from a hub (ESP32, Raspberry Pi, MQTT bridge). The response carries the desired
+    LED/buzzer state — state, not a command."""
+    outcome = iot_service.ingest(
+        db, device, [r.model_dump() for r in body.readings], simulated=body.simulated
+    )
+    device.last_seen_at = datetime.now(UTC)
+    db.commit()
+    return ReadingResult(**outcome)
+
+
+@router.post("/vision/detections", response_model=DetectionResult)
+def vision_detections(body: DetectionBatch, device: CurrentDevice, db: DB) -> DetectionResult:
+    """Detections from the on-site camera agent (never video). Returns the camera's settings."""
+    outcome = vision_service.ingest(
+        db,
+        device,
+        camera_key=body.camera_key,
+        name=body.name,
+        detections=[d.model_dump() for d in body.detections],
+        snapshot=body.snapshot_base64,
+        simulated=body.simulated,
+    )
+    device.last_seen_at = datetime.now(UTC)
+    db.commit()
+    return DetectionResult(**outcome)
+
+
+@router.get("/vision/config", response_model=CameraConfig)
+def vision_config(
+    device: CurrentDevice,
+    db: DB,
+    camera_key: Annotated[str, Query(pattern=r"^[a-z0-9][a-z0-9_-]{0,63}$")],
+    name: Annotated[str | None, Query(max_length=120)] = None,
+) -> CameraConfig:
+    camera = vision_service.get_or_register(db, device, camera_key, name)
+    db.commit()
+    return CameraConfig(**vision_service.camera_config(camera))

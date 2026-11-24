@@ -151,10 +151,18 @@ class EnrollmentToken(UUIDPrimaryKey, Base):
 
 
 class Camera(UUIDPrimaryKey, Timestamps, Base):
+    """A camera watched by an enrolled device running the camera agent (Phase 6).
+
+    Video never leaves the site: the agent sends detections only, plus a still snapshot when
+    ``privacy_mode`` is off. Detection is motion / person / restricted zone — never identity.
+    """
+
     __tablename__ = "cameras"
     __table_args__ = (
         CheckConstraint(in_values("status", DEVICE_STATUSES), name="status"),
+        CheckConstraint("retention_days BETWEEN 1 AND 90", name="retention_days"),
         Index("ix_cameras_org", "organization_id"),
+        UniqueConstraint("organization_id", "device_id", "camera_key"),
     )
 
     organization_id: Mapped[uuid.UUID] = _org_fk()
@@ -166,16 +174,22 @@ class Camera(UUIDPrimaryKey, Timestamps, Base):
     privacy_mode: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
     detection_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     retention_days: Mapped[int] = mapped_column(Integer, default=7, server_default="7")
-    zones: Mapped[list[Any]] = mapped_column(default=list)  # restricted-zone polygons
+    zones: Mapped[list[Any]] = mapped_column(default=list)  # restricted zones: [{name, x, y, w, h}] in 0..1
     last_frame_at: Mapped[datetime | None]
+    camera_key: Mapped[str | None] = mapped_column(String(64))  # stable id chosen by the agent
+    blur_people: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    last_event_at: Mapped[datetime | None]
     is_simulated: Mapped[bool] = _simulated()
 
 
 class Sensor(UUIDPrimaryKey, Timestamps, Base):
+    """A sensor attached to an enrolled hub device (ESP32, Raspberry Pi, MQTT bridge — Phase 6)."""
+
     __tablename__ = "sensors"
     __table_args__ = (
         CheckConstraint(in_values("status", DEVICE_STATUSES), name="status"),
         Index("ix_sensors_org", "organization_id"),
+        UniqueConstraint("organization_id", "device_id", "sensor_key"),
     )
 
     organization_id: Mapped[uuid.UUID] = _org_fk()
@@ -184,10 +198,43 @@ class Sensor(UUIDPrimaryKey, Timestamps, Base):
     sensor_type: Mapped[str] = mapped_column(String(48))  # temperature, motion, gas, door, ...
     unit: Mapped[str | None] = mapped_column(String(16))
     status: Mapped[str] = mapped_column(String(16), default="unknown")
-    thresholds: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    thresholds: Mapped[dict[str, Any]] = mapped_column(default=dict)  # {min?, max?, severity}
     last_value: Mapped[float | None] = mapped_column(Float)
     last_reading_at: Mapped[datetime | None]
+    sensor_key: Mapped[str | None] = mapped_column(String(64))  # stable id chosen by the hub
+    # Actuators on the hub switched on while this sensor is outside its thresholds ("led", "buzzer").
+    actuator_rules: Mapped[list[Any]] = mapped_column(default=list)
+    in_breach: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     is_simulated: Mapped[bool] = _simulated()
+
+
+class SensorReading(UUIDPrimaryKey, Base):
+    __tablename__ = "sensor_readings"
+    __table_args__ = (Index("ix_sensor_readings_sensor_time", "sensor_id", "recorded_at"),)
+
+    organization_id: Mapped[uuid.UUID] = _org_fk()
+    sensor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("sensors.id", ondelete="CASCADE"))
+    value: Mapped[float] = mapped_column(Float)
+    recorded_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class CameraSnapshot(UUIDPrimaryKey, Base):
+    """A still image sent with a detection, only while the camera's privacy mode is off.
+
+    People are blurred by the agent when ``blur_people`` is on; snapshots expire after the camera's
+    retention period and can be deleted by managers at any time.
+    """
+
+    __tablename__ = "camera_snapshots"
+    __table_args__ = (Index("ix_camera_snapshots_camera_time", "camera_id", "captured_at"),)
+
+    organization_id: Mapped[uuid.UUID] = _org_fk()
+    camera_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cameras.id", ondelete="CASCADE"))
+    event_type: Mapped[str] = mapped_column(String(32))
+    content_type: Mapped[str] = mapped_column(String(32), default="image/jpeg")
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    captured_at: Mapped[datetime] = mapped_column(default=utcnow)
+    expires_at: Mapped[datetime]
 
 
 class NetworkAsset(UUIDPrimaryKey, Timestamps, Base):
@@ -595,7 +642,9 @@ TENANT_TABLES: tuple[str, ...] = (
     "devices",
     "enrollment_tokens",
     "cameras",
+    "camera_snapshots",
     "sensors",
+    "sensor_readings",
     "network_assets",
     "network_scopes",
     "security_events",

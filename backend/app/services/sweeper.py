@@ -12,12 +12,12 @@ import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.session import get_sessionmaker, set_tenant_context
-from app.models import Device, Organization, SecurityEvent
+from app.models import CameraSnapshot, Device, Organization, SecurityEvent, SensorReading
 from app.services import realtime
 from app.services.devices import device_summary
 
@@ -75,6 +75,42 @@ def sweep_offline_devices(db: Session | None = None, now: datetime | None = None
     return marked
 
 
+def purge_expired_data(db: Session | None = None, now: datetime | None = None) -> dict[str, int]:
+    """Retention: sensor readings older than SENSOR_READING_RETENTION_DAYS and expired snapshots."""
+    settings = get_settings()
+    now = now or datetime.now(UTC)
+    readings_before = now - timedelta(days=settings.sensor_reading_retention_days)
+    own_session = db is None
+    db = db or get_sessionmaker()()
+    removed = {"readings": 0, "snapshots": 0}
+    try:
+        for org_id in list(db.scalars(select(Organization.id))):
+            set_tenant_context(db, org_id=org_id)
+            removed["readings"] += (
+                db.execute(
+                    delete(SensorReading).where(
+                        SensorReading.organization_id == org_id, SensorReading.recorded_at < readings_before
+                    )
+                ).rowcount
+                or 0
+            )
+            removed["snapshots"] += (
+                db.execute(
+                    delete(CameraSnapshot).where(
+                        CameraSnapshot.organization_id == org_id, CameraSnapshot.expires_at < now
+                    )
+                ).rowcount
+                or 0
+            )
+            db.commit()
+    finally:
+        if own_session:
+            db.close()
+    if any(removed.values()):
+        log.info("retention purge: %s", removed)
+    return removed
+
+
 async def run_forever() -> None:
     from starlette.concurrency import run_in_threadpool
 
@@ -83,5 +119,6 @@ async def run_forever() -> None:
         await asyncio.sleep(interval)
         try:
             await run_in_threadpool(sweep_offline_devices)
+            await run_in_threadpool(purge_expired_data)
         except Exception:
             log.exception("device sweep failed")
