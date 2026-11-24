@@ -753,3 +753,51 @@ export interface SimulatorResult {
   detections: number
   actuators: Record<string, boolean>
 }
+
+// ---------------------------------------------------------------------- Digital Twin (Phase 7)
+export interface TwinArea {
+  id: string
+  name: string
+  x: number
+  y: number
+  w: number
+  h: number
+  simulated?: boolean
+}
+
+export interface TwinDevice {
+  id: string
+  name: string
+  device_type: string
+  status: string
+  health_score: number | null
+  risk_score: number | null
+  ip_address: string | null
+  segment: string | null
+  is_simulated: boolean
+  position: { x: number; y: number; area: string | null } | null
+  open_alerts: number
+  max_alert_severity: Severity | null
+  open_incidents: { id: string; reference: string; title: string; severity: Severity; status: string }[]
+  sensors: { id: string; name: string; sensor_type: string; unit: string | null; last_value: number | null; in_breach: boolean }[]
+  cameras: { id: string; name: string; detection_enabled: boolean; zones: number; last_event_at: string | null }[]
+}
+
+export interface Twin {
+  generated_at: string
+  floor: { width: number; depth: number }
+  areas: TwinArea[]
+  devices: TwinDevice[]
+  segments: { cidr: string; device_ids: string[] }[]
+  stats: {
+    devices: number
+    online: number
+    degraded: number
+    offline: number
+    open_alerts: number
+    open_incidents: number
+    sensors_in_breach: number
+    simulated: number
+    placed: number
+  }
+}

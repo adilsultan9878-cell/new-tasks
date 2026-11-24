@@ -43,6 +43,10 @@ export function RealtimeProvider({ orgId, children }: { orgId: string; children:
 
     const handle = (msg: RealtimeMessage) => {
       const d = msg.data ?? {}
+      // The twin is a read model over devices, alerts, incidents and sensors: refresh it on any of them.
+      if (/^(twin|device|alert|incident|sensor|camera)\./.test(msg.type)) {
+        void queryClient.invalidateQueries({ queryKey: ['twin', orgId] })
+      }
       switch (msg.type) {
         case 'event.created':
         case 'event.updated':

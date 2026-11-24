@@ -118,9 +118,17 @@ published rules over the organization's own data. No AI model is used.
 | Object classes beyond people (vehicles, packages) | ⬜ | needs a downloadable detection model (e.g. MobileNet-SSD); HOG covers people only |
 | Firmware verified on real hardware | ⬜ | test on an ESP32 before production use |
 
-## Phase 7 — Digital Twin ⬜
+## Phase 7 — Digital Twin ✅ (v0.7.0)
 
-- Three.js environment of devices, connections, risk and incidents; simulated data clearly labelled
+| Feature | Status | Evidence |
+|---|---|---|
+| Twin read model: devices with status, health, Brain risk, open alerts (worst severity), open incidents, sensors, cameras, saved position; /24 network segments; summary | ✅ | `tests/test_twin.py` |
+| Layout: rooms on a 100 × 60 m floor and device positions, validated, audited, `devices:manage` only; the simulated flag of a room is decided by the server | ✅ | `test_layout_is_validated_saved_and_permissioned` |
+| Three.js 3D view (lazy-loaded): status colours, risk-height markers, alert pulses, incident beacons, sensor/camera satellites, segment links, orbit, select, drag-to-place in edit mode | ✅ | e2e `twin.spec.ts` (WebGL render) + screenshots |
+| Room-by-room list view; automatic fallback when WebGL is unavailable | ✅ | `TwinPage.test.tsx` |
+| Real-time refresh on device, alert, incident, sensor and camera changes | ✅ | realtime provider |
+| Simulator furnishes a labelled example site (three rooms, four machines) | ✅ | `test_simulator_furnishes_the_twin_and_clearing_keeps_real_areas` |
+| Multiple floors / imported floor plans (images, CAD) | ⬜ | one floor per organization today |
 
 ## Phase 8 — Automation ⬜
 

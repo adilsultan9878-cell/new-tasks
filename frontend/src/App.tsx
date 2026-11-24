@@ -8,6 +8,7 @@ import { OrgShell, RootRedirect } from '@/org/OrgShell'
 import { ToastProvider } from '@/realtime/Toaster'
 import { IotPage } from '@/pages/aegis/IotPage'
 import { VisionPage } from '@/pages/aegis/VisionPage'
+import { TwinPage } from '@/pages/twin/TwinPage'
 import { AuditLogPage } from '@/pages/audit/AuditLogPage'
 import { AgentCenterPage } from '@/pages/brain/AgentCenterPage'
 import { BrainPage } from '@/pages/brain/BrainPage'
@@ -79,6 +80,7 @@ export const routes = [
           { path: 'forensics', element: <ForensicsPage /> },
           { path: 'vision', element: <VisionPage /> },
           { path: 'iot', element: <IotPage /> },
+          { path: 'twin', element: <TwinPage /> },
           { path: 'reports', element: <ReportsPage /> },
           { path: 'reports/:reportId', element: <ReportPage /> },
           { path: 'organization', element: <OrganizationPage /> },
