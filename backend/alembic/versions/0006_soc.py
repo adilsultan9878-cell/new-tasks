@@ -108,6 +108,20 @@ def upgrade() -> None:
         CREATE TRIGGER evidence_integrity BEFORE UPDATE ON evidence
             FOR EACH ROW EXECUTE FUNCTION evidence_integrity();
     """)
+    # Trigger functions are never called directly; firing a trigger does not check EXECUTE.
+    op.execute("REVOKE ALL ON FUNCTION evidence_blobs_immutable(), evidence_integrity() FROM PUBLIC")
+    # Supabase grants EXECUTE on new functions to its Data API roles by default: take it back.
+    op.execute("""
+        DO $$
+        DECLARE r text;
+        BEGIN
+            FOREACH r IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+                    EXECUTE 'REVOKE ALL ON FUNCTION evidence_blobs_immutable(), evidence_integrity() FROM ' || quote_ident(r);
+                END IF;
+            END LOOP;
+        END $$;
+    """)
 
 
 def downgrade() -> None:
