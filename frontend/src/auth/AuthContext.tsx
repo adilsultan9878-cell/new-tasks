@@ -89,3 +89,8 @@ export function useAuth(): AuthState {
   if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>')
   return ctx
 }
+
+/** The signed-in user, or null outside an AuthProvider (e.g. isolated component tests). */
+export function useCurrentUser(): User | null {
+  return useContext(AuthContext)?.user ?? null
+}

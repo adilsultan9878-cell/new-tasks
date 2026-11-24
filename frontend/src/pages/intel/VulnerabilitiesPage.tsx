@@ -81,7 +81,7 @@ export function VulnerabilitiesPage() {
               {stats.data?.kev_total ? 'Try another search, or open any CVE by its ID.' : can('intel:manage') ? 'Use “Refresh from CISA” to download the catalogue.' : 'Ask an analyst or admin to refresh it.'}
             </EmptyState>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="relative overflow-x-auto">
               <table className="w-full min-w-[760px] text-sm">
                 <thead><tr className="border-b border-line text-left text-xs text-fg-subtle">
                   <th className="px-5 py-2.5 font-medium">CVE</th><th className="px-3 py-2.5 font-medium">Vulnerability</th>

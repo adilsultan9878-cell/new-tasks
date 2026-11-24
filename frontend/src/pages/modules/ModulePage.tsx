@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
 import { Panel } from '@/components/ui/Panel'
-import { MODULE_GROUPS, PHASES, findModule } from '@/config/modules'
+import { COMPLETED_PHASE, MODULE_GROUPS, PHASES, findModule } from '@/config/modules'
 import { useOrg } from '@/org/OrgContext'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
@@ -51,7 +51,7 @@ export function ModulePage() {
           <ol className="relative space-y-3 border-l border-line pl-5">
             {Object.entries(PHASES).map(([num, name]) => {
               const n = Number(num)
-              const state = n === 1 ? 'done' : n === module.phase ? 'target' : 'other'
+              const state = n <= COMPLETED_PHASE ? 'done' : n === module.phase ? 'target' : 'other'
               return (
                 <li key={num} className="relative text-sm">
                   <span
@@ -73,8 +73,8 @@ export function ModulePage() {
               )
             })}
           </ol>
-          <Link to={`/org/${orgId}`} className="mt-5 inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg">
-            <ArrowLeft className="size-4" /> Back to Command Center
+          <Link to={`/org/${orgId}/roadmap`} className="mt-5 inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg">
+            <ArrowLeft className="size-4" /> Back to What's next
           </Link>
         </Panel>
       </div>

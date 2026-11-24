@@ -52,17 +52,20 @@ export type ModuleGroupKey = 'overview' | 'nexus' | 'sentinel' | 'aegis' | 'admi
 
 export const MODULE_GROUPS: { key: ModuleGroupKey; label: string; caption: string }[] = [
   { key: 'overview', label: 'Overview', caption: '' },
-  { key: 'nexus', label: 'NEXUS ZERO', caption: 'Threat hunting' },
-  { key: 'sentinel', label: 'SENTINEL X', caption: 'Security operations' },
-  { key: 'aegis', label: 'AEGIS ONE', caption: 'Environment protection' },
-  { key: 'admin', label: 'Administration', caption: '' },
+  { key: 'sentinel', label: 'Respond', caption: 'SENTINEL X' },
+  { key: 'aegis', label: 'Protect', caption: 'AEGIS ONE' },
+  { key: 'nexus', label: 'Investigate', caption: 'NEXUS ZERO' },
+  { key: 'admin', label: 'Admin', caption: '' },
 ]
+
+/** Highest phase that has shipped (drives the roadmap timeline). */
+export const COMPLETED_PHASE = 4
 
 export const PHASES: Record<number, string> = {
   1: 'Foundation',
   2: 'Security Event Engine',
   3: 'NEXUS ZERO',
-  4: 'AI Brain',
+  4: 'Security Brain',
   5: 'SENTINEL X SOC',
   6: 'AEGIS ONE',
   7: 'Digital Twin',

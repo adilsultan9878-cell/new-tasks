@@ -26,6 +26,7 @@
   --color-accent-strong: #06b6d4;
   --color-accent-soft: rgb(34 211 238 / 0.12);
   --color-electric: #3b82f6;
+  --color-violet: #8b5cf6;
 
   /* Status / severity (always paired with a text label or icon, never color alone) */
   --color-critical: #f0565b;
@@ -36,6 +37,7 @@
   --color-ok: #2fbf71;
 
   --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
   --shadow-panel: inset 0 1px 0 0 rgb(255 255 255 / 0.035), 0 1px 2px 0 rgb(0 0 0 / 0.4);
 
   --animate-fade-in: fade-in 180ms ease-out;
@@ -67,8 +69,9 @@
     @apply bg-canvas text-fg font-sans antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     background-image:
-      radial-gradient(1200px 500px at 15% -10%, rgb(34 211 238 / 0.06), transparent 60%),
-      radial-gradient(900px 400px at 100% 0%, rgb(59 130 246 / 0.05), transparent 55%);
+      radial-gradient(1100px 520px at 12% -12%, rgb(34 211 238 / 0.08), transparent 60%),
+      radial-gradient(900px 480px at 95% -5%, rgb(139 92 246 / 0.09), transparent 58%),
+      radial-gradient(700px 400px at 50% 110%, rgb(59 130 246 / 0.05), transparent 60%);
     background-attachment: fixed;
   }
   ::selection {
@@ -93,8 +96,55 @@
 
 @layer components {
   .panel {
-    @apply rounded-xl border border-line bg-ink-900/80 backdrop-blur-sm;
+    @apply min-w-0 rounded-2xl border border-line bg-ink-900/75 backdrop-blur-sm;
     box-shadow: var(--shadow-panel);
+  }
+  .brand-gradient {
+    background-image: linear-gradient(120deg, var(--color-accent), var(--color-violet));
+  }
+  .brand-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(120deg, #67e8f9, #a78bfa);
+  }
+  /* Adapted from Magic UI DotPattern (MIT, see THIRD_PARTY_NOTICES.md): a static, CSS-only version. */
+  .dot-pattern {
+    background-image: radial-gradient(rgb(148 163 184 / 0.22) 1px, transparent 1px);
+    background-size: 18px 18px;
+    mask-image: radial-gradient(ellipse at 30% 20%, black 20%, transparent 70%);
+  }
+  /* Adapted from Magic UI BorderBeam (MIT, see THIRD_PARTY_NOTICES.md). */
+  .border-beam {
+    border: 1px solid transparent;
+    mask: linear-gradient(transparent, transparent) padding-box, linear-gradient(#000, #000) border-box;
+    mask-composite: intersect;
+  }
+  .border-beam-dot {
+    position: absolute;
+    aspect-ratio: 1;
+    background: linear-gradient(to left, var(--beam-from), var(--beam-to), transparent);
+    offset-anchor: 90% 50%;
+    animation: border-beam linear infinite;
+  }
+  @keyframes border-beam {
+    from { offset-distance: 0%; }
+    to { offset-distance: 100%; }
+  }
+  /* Adapted from Magic UI MagicCard (MIT, see THIRD_PARTY_NOTICES.md). */
+  .spotlight-card {
+    @apply relative min-w-0 rounded-2xl border border-line bg-ink-900/75;
+    box-shadow: var(--shadow-panel);
+    background-image: radial-gradient(260px circle at var(--mx, -300px) var(--my, -300px), rgb(34 211 238 / 0.07), transparent 70%);
+  }
+  .spotlight-card::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: radial-gradient(220px circle at var(--mx, -300px) var(--my, -300px), rgb(139 92 246 / 0.55), rgb(34 211 238 / 0.35) 40%, transparent 70%);
+    mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+    mask-composite: exclude;
+    pointer-events: none;
   }
   .grid-bg {
     background-image:

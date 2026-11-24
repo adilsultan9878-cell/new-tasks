@@ -22,6 +22,7 @@ import { PhishingPage } from '@/pages/intel/PhishingPage'
 import { ThreatIntelPage } from '@/pages/intel/ThreatIntelPage'
 import { VulnerabilitiesPage } from '@/pages/intel/VulnerabilitiesPage'
 import { ModulePage } from '@/pages/modules/ModulePage'
+import { RoadmapPage } from '@/pages/modules/RoadmapPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { CreateOrganizationPage } from '@/pages/onboarding/CreateOrganizationPage'
 import { MembersPage } from '@/pages/org/MembersPage'
@@ -71,6 +72,7 @@ export const routes = [
           { path: 'members', element: <MembersPage /> },
           { path: 'audit', element: <AuditLogPage /> },
           { path: 'settings', element: <SettingsPage /> },
+          { path: 'roadmap', element: <RoadmapPage /> },
           { path: 'm/:moduleKey', element: <ModulePage /> },
           { path: '*', element: <NotFoundPage embedded /> },
         ],

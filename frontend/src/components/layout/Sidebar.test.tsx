@@ -7,14 +7,16 @@ import { membership, renderInOrg } from '@/test/utils'
 import { Sidebar } from './Sidebar'
 
 describe('Sidebar', () => {
-  it('lists every platform module, marking planned ones with their phase', () => {
+  it('lists only working modules and keeps planned ones on the roadmap page', () => {
     const m = membership()
     renderInOrg(<Sidebar memberships={[m]} collapsed={false} />, { m })
     const nav = screen.getByRole('navigation', { name: 'Main' })
-    const links = within(nav).getAllByRole('link')
-    expect(links.length).toBe(MODULES.length)
-    expect(within(nav).getByRole('link', { name: /Computer Vision/ })).toHaveTextContent('P6')
-    expect(within(nav).getByRole('link', { name: /Phishing & URL/ })).not.toHaveTextContent('P3')
+    const live = MODULES.filter((x) => x.status === 'live' && (!x.permission || m.permissions.includes(x.permission)))
+    const planned = MODULES.filter((x) => x.status === 'planned')
+    expect(within(nav).getAllByRole('link')).toHaveLength(live.length + 1)
+    expect(within(nav).queryByRole('link', { name: /Computer Vision/ })).not.toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: /What's next/ })).toHaveTextContent(String(planned.length))
+    expect(within(nav).getByRole('link', { name: /What's next/ })).toHaveAttribute('href', `/org/${m.organization.id}/roadmap`)
     expect(within(nav).getByRole('link', { name: 'Command Center' })).toHaveAttribute('href', `/org/${m.organization.id}`)
   })
 

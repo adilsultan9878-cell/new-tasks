@@ -64,7 +64,7 @@ export function AuditLogPage() {
         ) : logs.data.items.length === 0 ? (
           <EmptyState icon={ScrollText} title="No matching audit records" />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs text-fg-subtle">

@@ -195,7 +195,7 @@ function AgentFindings({ agent, findings }: { agent: string; findings: BrainDeci
 
 function TraceTable({ trace }: { trace: BrainTraceEntry[] }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="relative overflow-x-auto">
       <table className="w-full min-w-[640px] text-xs">
         <thead><tr className="border-b border-line text-left text-fg-subtle">
           <th className="px-5 py-2 font-medium">#</th><th className="px-3 py-2 font-medium">Agent</th><th className="px-3 py-2 font-medium">Tool</th>

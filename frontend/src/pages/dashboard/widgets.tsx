@@ -1,7 +1,9 @@
 import type { LucideIcon } from 'lucide-react'
 
+import { NumberTicker } from '@/components/magic/NumberTicker'
+import { SpotlightCard } from '@/components/magic/SpotlightCard'
 import { cn } from '@/lib/cn'
-import { formatNumber, titleCase } from '@/lib/format'
+import { titleCase } from '@/lib/format'
 import type { CountBy } from '@/lib/types'
 
 export function KpiTile({ label, value, icon: Icon, sub, tone = 'neutral' }: {
@@ -13,19 +15,19 @@ export function KpiTile({ label, value, icon: Icon, sub, tone = 'neutral' }: {
 }) {
   const hot = tone === 'critical' && value > 0
   return (
-    <div className={cn('panel relative overflow-hidden p-4 sm:p-5', hot && 'border-critical/30')}>
+    <SpotlightCard className={cn('overflow-hidden p-4 sm:p-5', hot && 'border-critical/30')}>
       {hot && <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-critical/70 to-transparent" aria-hidden />}
       <div className="flex items-start justify-between gap-2">
         <p className="text-[13px] font-medium text-fg-muted">{label}</p>
-        <span className={cn('flex size-7 items-center justify-center rounded-md border border-line bg-ink-800', hot ? 'text-critical' : 'text-fg-subtle')}>
-          <Icon className="size-3.5" aria-hidden />
+        <span className={cn('flex size-8 items-center justify-center rounded-lg border border-line', hot ? 'bg-critical/10 text-critical' : 'bg-ink-800 text-accent')}>
+          <Icon className="size-4" aria-hidden />
         </span>
       </div>
-      <p className={cn('tabular mt-3 text-3xl font-semibold tracking-tight', hot ? 'text-critical' : 'text-fg')} data-testid={`kpi-${label}`}>
-        {formatNumber(value)}
+      <p className={cn('mt-3 text-3xl font-semibold tracking-tight', hot ? 'text-critical' : 'text-fg')} data-testid={`kpi-${label}`}>
+        <NumberTicker value={value} />
       </p>
       <p className="mt-1 truncate text-xs text-fg-subtle">{sub}</p>
-    </div>
+    </SpotlightCard>
   )
 }
 

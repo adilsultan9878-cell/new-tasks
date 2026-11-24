@@ -16,7 +16,7 @@ async function createOrg(page: Page, name: string): Promise<string> {
   await page.getByLabel('Organization name').fill(name)
   await page.getByRole('button', { name: 'Create organization' }).click()
   await expect(page).toHaveURL(/\/org\/[0-9a-f-]{36}$/)
-  await expect(page.getByRole('heading', { name })).toBeVisible()
+  await expect(page.getByText(`Command Center · ${name}`)).toBeVisible()
   return page.url()
 }
 
@@ -38,7 +38,8 @@ test('register → create organization → dashboard → session survives reload
 
   // Access token lives in memory; reload restores the session from the HttpOnly refresh cookie.
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Karachi Cyber Research Lab' })).toBeVisible()
+  await expect(page.getByText('Command Center · Karachi Cyber Research Lab')).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Ayesha/ })).toBeVisible() // greeting by first name
 
   // The creation was audited.
   await page.goto(`${orgUrl}/audit`)
@@ -87,7 +88,7 @@ test('tenant isolation and RBAC in the UI', async ({ browser }) => {
 
   // Viewer now sees the org, but read-only.
   await viewer.goto(orgUrl)
-  await expect(viewer.getByRole('heading', { name: 'Isolated Org' })).toBeVisible()
+  await expect(viewer.getByText('Command Center · Isolated Org')).toBeVisible()
   await viewer.goto(`${orgUrl}/members`)
   await expect(viewer.getByRole('cell', { name: /Olivia Owner/ })).toBeVisible()
   await expect(viewer.getByRole('button', { name: 'Add member' })).toHaveCount(0)

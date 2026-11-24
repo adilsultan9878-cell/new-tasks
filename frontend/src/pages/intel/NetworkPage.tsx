@@ -31,7 +31,7 @@ export function NetworkPage() {
           {assets.isPending ? <div className="space-y-2 p-5"><Skeleton className="h-9" /><Skeleton className="h-9" /></div>
             : assets.isError ? <div className="p-5"><ErrorNotice error={assets.error} /></div>
             : assets.data.length === 0 ? <EmptyState icon={Network} title="No assets yet">Declare an authorized scope, then import an Nmap XML report or enroll agents.</EmptyState> : (
-              <div className="overflow-x-auto">
+              <div className="relative overflow-x-auto">
                 <table className="w-full min-w-[640px] text-sm">
                   <thead><tr className="border-b border-line text-left text-xs text-fg-subtle">
                     <th className="px-5 py-2.5 font-medium">Host</th><th className="px-3 py-2.5 font-medium">Open ports</th>
