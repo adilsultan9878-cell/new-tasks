@@ -47,5 +47,16 @@ services:
     ports:
       - "127.0.0.1:8080:80"
 
+  # Optional local MQTT broker for sensor boards: docker compose --profile iot up -d mosquitto
+  mosquitto:
+    image: eclipse-mosquitto:2
+    profiles: ["iot"]
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./docker/mosquitto/passwd:/mosquitto/config/passwd:ro
+    restart: unless-stopped
+
 volumes:
   pgdata:

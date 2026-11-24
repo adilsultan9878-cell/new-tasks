@@ -7,4 +7,4 @@ Design rules (enforced by tests):
 * it authenticates with a per-device credential over HTTPS and can be removed cleanly.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

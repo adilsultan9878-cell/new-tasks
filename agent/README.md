@@ -123,9 +123,40 @@ waiting to be delivered) and `logs/agent.log` (rotated at 1 MB, 3 files kept).
    pip uninstall sentinel-x-agent
    ```
 
+## Cameras (computer vision)
+
+The agent can watch a camera on this machine and report **detections only** — motion, a person,
+or a person inside a restricted zone. Video never leaves the machine and nothing identifies anyone.
+
+```powershell
+pip install "sentinel-x-agent[vision]"
+$env:SENTINEL_CAMERA_SOURCE = "0"            # USB camera index, or an RTSP URL (kept local)
+sentinel-agent camera --key front-door --name "Front door"
+```
+
+The camera appears under **Computer Vision** with detection **off**. Turn it on there, draw the
+restricted zones, and choose whether snapshots may be sent (privacy mode off) and whether people in
+them are blurred (on by default). The agent follows those settings within a minute.
+
+## Sensor boards over MQTT
+
+ESP32/Arduino boards can publish to a local, password-protected MQTT broker; this agent forwards
+their readings and publishes the LED/buzzer state back.
+
+```powershell
+pip install "sentinel-x-agent[mqtt]"
+$env:SENTINEL_MQTT_USERNAME = "bridge"; $env:SENTINEL_MQTT_PASSWORD = "<broker password>"
+sentinel-agent mqtt-bridge --broker localhost --port 1883
+```
+
+Boards publish `sentinel/<board>/readings` with
+`{"readings": [{"sensor_key": "temp", "sensor_type": "temperature", "unit": "C", "value": 24.1}]}` and
+subscribe to `sentinel/<board>/actuators` (`{"led": false, "buzzer": true}`). A MicroPython hub that
+talks to the API directly is in [`firmware/micropython`](../firmware/micropython).
+
 ## Protocol (for integrators)
 
-All requests are `POST` JSON to `<server>/api/v1/agent/…`; after enrollment they carry
+Requests are JSON to `<server>/api/v1/agent/…` (POST unless noted); after enrollment they carry
 `Authorization: Bearer sxd.<org>.<device>.<secret>`.
 
 | Endpoint | Purpose |
@@ -135,6 +166,9 @@ All requests are `POST` JSON to `<server>/api/v1/agent/…`; after enrollment th
 | `/events` | submit up to 100 events (`event_type`, `category`, `severity`, `title`, optional `dedup_key`, `raw` ≤ 16 KB) |
 | `/credentials/rotate` | replace the device credential |
 | `/unenroll` | revoke this device |
+| `/sensors/readings` | up to 100 sensor readings; the response carries the desired `led` / `buzzer` state |
+| `/vision/detections` | detections for one camera (and a snapshot only when allowed); the response carries the camera settings |
+| `GET /vision/config?camera_key=` | the camera settings (registers a new camera with detection off) |
 
 ## Tests
 

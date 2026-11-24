@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import ssl
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
 from urllib.parse import urlsplit
@@ -55,14 +56,23 @@ class AgentClient:
         self.timeout = timeout
         self._ssl = ssl.create_default_context()  # certificate verification always on
 
-    def _request(self, path: str, body: dict[str, Any] | None, auth: bool = True) -> dict[str, Any] | None:
-        data = json.dumps(body or {}).encode("utf-8")
+    def _request(
+        self,
+        path: str,
+        body: dict[str, Any] | None,
+        auth: bool = True,
+        method: str = "POST",
+        query: dict[str, str] | None = None,
+    ) -> dict[str, Any] | None:
+        data = json.dumps(body or {}).encode("utf-8") if method == "POST" else None
+        if query:
+            path = f"{path}?{urllib.parse.urlencode(query)}"
         headers = {"Content-Type": "application/json", "User-Agent": f"sentinel-x-agent/{__version__}"}
         if auth and self.device_token:
             headers["Authorization"] = f"Bearer {self.device_token}"
         # base_url passed normalize_server_url(): only http(s) schemes can reach this point.
         req = urllib.request.Request(  # noqa: S310
-            f"{self.base_url}/agent{path}", data=data, headers=headers, method="POST"
+            f"{self.base_url}/agent{path}", data=data, headers=headers, method=method
         )
         try:
             with urllib.request.urlopen(req, timeout=self.timeout, context=self._ssl) as resp:  # noqa: S310
@@ -102,6 +112,23 @@ class AgentClient:
 
     def unenroll(self) -> None:
         self._request("/unenroll", {})
+
+    # AEGIS ONE (Phase 6): sensor hubs and cameras
+    def send_readings(self, readings: list[dict[str, Any]], simulated: bool = False) -> dict[str, Any]:
+        result = self._request("/sensors/readings", {"readings": readings, "simulated": simulated})
+        assert result is not None
+        return result
+
+    def vision_config(self, camera_key: str, name: str | None = None) -> dict[str, Any]:
+        query = {"camera_key": camera_key, **({"name": name} if name else {})}
+        result = self._request("/vision/config", None, method="GET", query=query)
+        assert result is not None
+        return result
+
+    def send_detections(self, payload: dict[str, Any]) -> dict[str, Any]:
+        result = self._request("/vision/detections", payload)
+        assert result is not None
+        return result
 
 
 def _error_message(exc: urllib.error.HTTPError) -> str:

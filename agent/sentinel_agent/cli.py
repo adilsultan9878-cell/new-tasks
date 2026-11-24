@@ -1,9 +1,10 @@
-"""Command line: sentinel-agent enroll | run | status | rotate-credentials | unenroll"""
+"""Command line: enroll | run | status | rotate-credentials | unenroll | camera | mqtt-bridge"""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import signal
 import sys
@@ -142,6 +143,48 @@ def cmd_unenroll(args: argparse.Namespace) -> int:
     return 0
 
 
+def _client(state: AgentState) -> AgentClient:
+    return AgentClient(state.server_url, state.device_token)
+
+
+def cmd_camera(args: argparse.Namespace) -> int:
+    """Watch a camera locally and report detections (requires the [vision] extra)."""
+    setup_logging(args.verbose)
+    from sentinel_agent.vision import CameraMonitor
+
+    # The source can hold an RTSP password: prefer the environment variable; it is never sent anywhere.
+    source = args.source or os.environ.get("SENTINEL_CAMERA_SOURCE", "0")
+    monitor = CameraMonitor(_client(_require_state()), args.key, args.name)
+    try:
+        monitor.run(int(source) if source.isdigit() else source, fps=args.fps)
+    except KeyboardInterrupt:
+        return 0
+    except (RuntimeError, AgentError) as exc:
+        print(f"camera: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_mqtt_bridge(args: argparse.Namespace) -> int:
+    """Forward sensor readings from a local MQTT broker (requires the [mqtt] extra)."""
+    setup_logging(args.verbose)
+    from sentinel_agent import mqtt_bridge
+
+    try:
+        mqtt_bridge.run(
+            _client(_require_state()),
+            args.broker,
+            args.port,
+            os.environ.get("SENTINEL_MQTT_USERNAME"),
+            os.environ.get("SENTINEL_MQTT_PASSWORD"),
+            tls_ca=args.tls_ca,
+            interval=args.interval,
+        )
+    except KeyboardInterrupt:
+        return 0
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="sentinel-agent", description="SENTINEL X local security agent")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -164,6 +207,26 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("status", help="show enrollment and health").set_defaults(func=cmd_status)
     sub.add_parser("rotate-credentials", help="replace the device credential").set_defaults(func=cmd_rotate)
+
+    p = sub.add_parser(
+        "camera", help="watch a camera and report detections (pip install sentinel-x-agent[vision])"
+    )
+    p.add_argument("--key", required=True, help="stable camera id, e.g. front-door")
+    p.add_argument("--name", help="display name for the console")
+    p.add_argument("--source", help="camera index or RTSP URL (default: $SENTINEL_CAMERA_SOURCE or 0)")
+    p.add_argument("--fps", type=float, default=2.0, help="frames analysed per second (default 2)")
+    p.add_argument("-v", "--verbose", action="store_true")
+    p.set_defaults(func=cmd_camera)
+
+    p = sub.add_parser(
+        "mqtt-bridge", help="forward sensors from a local MQTT broker (pip install sentinel-x-agent[mqtt])"
+    )
+    p.add_argument("--broker", default="localhost", help="MQTT broker host (default localhost)")
+    p.add_argument("--port", type=int, default=1883)
+    p.add_argument("--tls-ca", help="CA certificate to connect with TLS")
+    p.add_argument("--interval", type=float, default=10.0, help="seconds between forwards (default 10)")
+    p.add_argument("-v", "--verbose", action="store_true")
+    p.set_defaults(func=cmd_mqtt_bridge)
 
     p = sub.add_parser("unenroll", help="unregister this device and delete its credential")
     p.add_argument("--purge", action="store_true", help="also delete logs and the agent data directory")

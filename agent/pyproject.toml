@@ -4,14 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sentinel-x-agent"
-version = "0.2.0"
+version = "0.3.0"
 description = "SENTINEL X local security agent: enrollment, approved telemetry and local detections"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = ["psutil>=5.9"]
 
 [project.optional-dependencies]
-test = ["pytest>=8"]
+# OpenCV 5 dropped the HOG people detector used by the camera agent: stay on 4.x.
+vision = ["opencv-python-headless>=4.9,<5", "numpy>=1.26"]
+mqtt = ["paho-mqtt>=2.0,<3"]
+test = ["pytest>=8", "opencv-python-headless>=4.9,<5", "numpy>=1.26", "paho-mqtt>=2.0,<3"]
 
 [project.scripts]
 sentinel-agent = "sentinel_agent.cli:main"
