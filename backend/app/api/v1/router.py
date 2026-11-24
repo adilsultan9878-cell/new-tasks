@@ -14,6 +14,7 @@ from app.api.v1.routes import (
     notifications,
     organizations,
     realtime,
+    soc,
 )
 
 api_router = APIRouter()
@@ -30,3 +31,4 @@ api_router.include_router(realtime.router)
 api_router.include_router(intel.router)
 api_router.include_router(network.router)
 api_router.include_router(brain.router)
+api_router.include_router(soc.router)

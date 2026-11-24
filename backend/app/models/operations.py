@@ -20,6 +20,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -67,6 +68,9 @@ ACTION_STATUSES = (
     "cancelled",
 )
 IMPACT_LEVELS = ("low", "medium", "high")
+# Allow-listed response actions (Phase 5). Each has a fixed impact level and executor.
+ACTION_TYPES = ("notify_team", "heighten_monitoring", "block_indicator", "revoke_device", "suspend_member")
+EVIDENCE_KINDS = ("file", "note", "external")
 APPROVAL_STATUSES = ("pending", "approved", "rejected", "expired")
 REPORT_STATUSES = ("draft", "generating", "ready", "failed")
 
@@ -255,6 +259,7 @@ class Incident(UUIDPrimaryKey, Timestamps, Base):
         CheckConstraint(in_values("severity", SEVERITIES), name="severity"),
         CheckConstraint(in_values("status", INCIDENT_STATUSES), name="status"),
         Index("ix_incidents_org_status", "organization_id", "status"),
+        UniqueConstraint("organization_id", "reference"),
     )
 
     organization_id: Mapped[uuid.UUID] = _org_fk()
@@ -267,6 +272,8 @@ class Incident(UUIDPrimaryKey, Timestamps, Base):
     opened_by: Mapped[uuid.UUID | None] = _user_fk()
     opened_at: Mapped[datetime] = mapped_column(default=utcnow)
     closed_at: Mapped[datetime | None]
+    # Append-only record of what happened: status changes, notes, linked alerts, actions (Phase 5).
+    timeline: Mapped[list[Any]] = mapped_column(default=list)
     is_simulated: Mapped[bool] = _simulated()
 
 
@@ -289,6 +296,7 @@ class Alert(UUIDPrimaryKey, Timestamps, Base):
     risk_score: Mapped[int | None] = mapped_column(Integer)
     detection_rule: Mapped[str | None] = mapped_column(String(120))
     assigned_to: Mapped[uuid.UUID | None] = _user_fk()
+    acknowledged_at: Mapped[datetime | None]  # first acknowledgement (time-to-acknowledge metric)
     resolved_at: Mapped[datetime | None]
     is_simulated: Mapped[bool] = _simulated()
 
@@ -384,7 +392,10 @@ class Evidence(UUIDPrimaryKey, Base):
     investigation_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("investigations.id", ondelete="SET NULL")
     )
-    evidence_type: Mapped[str] = mapped_column(String(32))  # file, snapshot, log, pcap, note
+    evidence_type: Mapped[str] = mapped_column(String(32))  # file, note, external
+    title: Mapped[str | None] = mapped_column(String(255))
+    filename: Mapped[str | None] = mapped_column(String(255))
+    content_type: Mapped[str | None] = mapped_column(String(120))
     description: Mapped[str | None] = mapped_column(Text)
     storage_uri: Mapped[str | None] = mapped_column(String(1024))
     sha256: Mapped[str | None] = mapped_column(String(64))
@@ -392,6 +403,22 @@ class Evidence(UUIDPrimaryKey, Base):
     collected_by: Mapped[uuid.UUID | None] = _user_fk()
     collected_at: Mapped[datetime] = mapped_column(default=utcnow)
     chain_of_custody: Mapped[list[Any]] = mapped_column(default=list)
+
+
+class EvidenceBlob(Base):
+    """The stored bytes of a file/note evidence item, kept apart so listings stay light.
+
+    Immutable: a PostgreSQL trigger rejects UPDATE; the API offers no delete.
+    """
+
+    __tablename__ = "evidence_blobs"
+
+    evidence_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("evidence.id", ondelete="CASCADE"), primary_key=True
+    )
+    organization_id: Mapped[uuid.UUID] = _org_fk()
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 
 # --------------------------------------------------------------------------- AI agents & response
@@ -466,7 +493,9 @@ class ResponseAction(UUIDPrimaryKey, Timestamps, Base):
     __table_args__ = (
         CheckConstraint(in_values("status", ACTION_STATUSES), name="status"),
         CheckConstraint(in_values("impact", IMPACT_LEVELS), name="impact"),
+        CheckConstraint(in_values("action_type", ACTION_TYPES), name="action_type"),
         Index("ix_response_actions_org_status", "organization_id", "status"),
+        Index("ix_response_actions_incident", "incident_id"),
     )
 
     organization_id: Mapped[uuid.UUID] = _org_fk()
@@ -474,7 +503,10 @@ class ResponseAction(UUIDPrimaryKey, Timestamps, Base):
     proposed_by_run_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("agent_runs.id", ondelete="SET NULL")
     )
-    action_type: Mapped[str] = mapped_column(String(48))  # notify_admin, block_indicator, ...
+    action_type: Mapped[str] = mapped_column(String(48))  # one of ACTION_TYPES
+    title: Mapped[str | None] = mapped_column(String(255))
+    reason: Mapped[str | None] = mapped_column(Text)
+    reversible: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     target: Mapped[dict[str, Any]] = mapped_column(default=dict)
     impact: Mapped[str] = mapped_column(String(16), default="low")
     requires_approval: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
@@ -572,6 +604,7 @@ TENANT_TABLES: tuple[str, ...] = (
     "investigations",
     "threat_indicators",
     "evidence",
+    "evidence_blobs",
     "agent_runs",
     "agent_decisions",
     "response_actions",

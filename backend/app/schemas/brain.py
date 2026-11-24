@@ -49,6 +49,11 @@ class EvidenceRef(APIModel):
     label: str = ""
 
 
+class ProposalOut(APIModel):
+    action_type: str
+    target: dict[str, Any]
+
+
 class RecommendationOut(APIModel):
     code: str
     text: str
@@ -57,6 +62,7 @@ class RecommendationOut(APIModel):
     agent: str
     because: str
     evidence: list[EvidenceRef] = Field(default_factory=list)
+    proposal: ProposalOut | None = None
 
 
 class DecisionOut(APIModel):

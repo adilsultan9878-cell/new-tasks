@@ -80,6 +80,10 @@ class Context:
     device: dict[str, Any] | None = None
 
     @property
+    def device_id(self) -> str | None:
+        return self.device["id"] if self.device else None
+
+    @property
     def host(self) -> str:
         d = self.device
         return (d["name"] or d["hostname"] or d["ip_address"] or "the device") if d else "the device"
@@ -163,7 +167,7 @@ def run_triage(ctx: Context, tb: Toolbox) -> AgentResult:
                 "high",
                 alert["description"] or "",
                 refs,
-                {"host": ctx.host},
+                {"host": ctx.host, "device_id": ctx.device_id},
             )
         )
 
@@ -411,7 +415,7 @@ def run_device(ctx: Context, tb: Toolbox) -> AgentResult:
                 "high",
                 f"On {ctx.host}.",
                 [_ref("device", device)],
-                {"host": ctx.host},
+                {"host": ctx.host, "device_id": ctx.device_id},
             )
         )
     if spike:
@@ -423,7 +427,7 @@ def run_device(ctx: Context, tb: Toolbox) -> AgentResult:
                 "medium",
                 f"{last24} events in 24 h vs a 7-day daily average of {daily_avg:.1f}.",
                 [_ref("device", device)],
-                {"host": ctx.host, "last24": last24, "avg": f"{daily_avg:.1f}"},
+                {"host": ctx.host, "last24": last24, "avg": f"{daily_avg:.1f}", "device_id": ctx.device_id},
             )
         )
     out.factors["event_activity"] = FactorResult(
@@ -437,7 +441,9 @@ def run_device(ctx: Context, tb: Toolbox) -> AgentResult:
 
 
 # ------------------------------------------------------------------------- exposure agent
-def _risky_findings(host: str, ports: set[int], refs: list[dict[str, Any]]) -> list[Finding]:
+def _risky_findings(
+    host: str, ports: set[int], refs: list[dict[str, Any]], device_id: str | None = None
+) -> list[Finding]:
     findings = []
     for port in sorted(ports):
         service = RISKY_SERVICES[port]
@@ -450,7 +456,7 @@ def _risky_findings(host: str, ports: set[int], refs: list[dict[str, Any]]) -> l
                     "critical",
                     "Commonly used by backdoors and reverse shells.",
                     refs,
-                    {"host": host, "port": port},
+                    {"host": host, "port": port, "device_id": device_id},
                 )
             )
         else:
@@ -488,7 +494,7 @@ def run_exposure(ctx: Context, tb: Toolbox) -> AgentResult:
         has_data = asset is not None or isinstance(reported, list)
         risky = {p for p in ports if p in RISKY_SERVICES}
         refs = [_ref("asset", asset, asset["ip_address"])] if asset else [_ref("device", device)]
-        out.findings += _risky_findings(ctx.host, risky, refs)
+        out.findings += _risky_findings(ctx.host, risky, refs, ctx.device_id)
         if asset and not asset["in_authorized_scope"]:
             out.findings.append(
                 Finding(
@@ -531,7 +537,7 @@ def run_exposure(ctx: Context, tb: Toolbox) -> AgentResult:
         host = asset["hostname"] or asset["ip_address"]
         refs = [_ref("asset", asset, asset["ip_address"])]
         doors = risky & BACKDOOR_PORTS
-        out.findings += _risky_findings(host, doors, refs)
+        out.findings += _risky_findings(host, doors, refs, asset["device_id"])
         rest = sorted(risky - doors)
         if rest:
             out.findings.append(
@@ -601,7 +607,7 @@ def run_intel(ctx: Context, tb: Toolbox) -> AgentResult:
                 f"{ind['type']} rated {ind['verdict']} (source: {ind['source']}, confidence {ind['confidence']}); "
                 f"seen in {len(sightings)} event(s).",
                 [_ref("indicator", ind, ind["value"])] + [_ref("event", e) for e in sightings[:10]],
-                {"value": ind["value"], "source": ind["source"]},
+                {"value": ind["value"], "source": ind["source"], "indicator_type": ind["type"]},
             )
         )
     if any(m["verdict"] == "malicious" for m in matches):

@@ -7,6 +7,7 @@ become response-action proposals that need explicit approval.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from app.brain.agents import Finding
@@ -122,6 +123,33 @@ PLAYBOOK: dict[str, tuple[str, str, bool]] = {
 }
 
 
+def _device_action(action_type: str) -> Callable[[dict[str, Any]], dict[str, Any] | None]:
+    def build(params: dict[str, Any]) -> dict[str, Any] | None:
+        device_id = params.get("device_id")
+        return {"action_type": action_type, "target": {"device_id": device_id}} if device_id else None
+
+    return build
+
+
+def _block(params: dict[str, Any]) -> dict[str, Any] | None:
+    if not params.get("indicator_type") or not params.get("value"):
+        return None
+    return {
+        "action_type": "block_indicator",
+        "target": {"indicator_type": params["indicator_type"], "value": params["value"]},
+    }
+
+
+# code → a response action an analyst can propose in one click (it still goes through approval).
+PROPOSALS: dict[str, Callable[[dict[str, Any]], dict[str, Any] | None]] = {
+    "intel.malicious_match": _block,
+    "exposure.backdoor_port": _device_action("revoke_device"),
+    "alert.bruteforce": _device_action("heighten_monitoring"),
+    "device.severe_events": _device_action("heighten_monitoring"),
+    "device.event_spike": _device_action("heighten_monitoring"),
+}
+
+
 class _Defaults(dict[str, Any]):
     def __missing__(self, key: str) -> str:
         return "?"
@@ -148,6 +176,7 @@ def recommend(findings: list[Finding]) -> list[dict[str, Any]]:
                 "agent": finding.agent,
                 "because": finding.title,
                 "evidence": finding.evidence[:10],
+                "proposal": PROPOSALS[finding.code](finding.params) if finding.code in PROPOSALS else None,
             }
         )
     recs.sort(key=lambda r: URGENCY_ORDER[r["urgency"]])

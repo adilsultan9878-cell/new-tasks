@@ -80,7 +80,7 @@ def _seed_operational_data(engine, org_id: str, simulated: bool = False) -> None
                 {
                     "id": uuid.uuid4(),
                     "organization_id": oid,
-                    "reference": "INC-1",
+                    "reference": "INC-SIM-1" if simulated else "INC-1",
                     "title": "Incident",
                     "severity": "high",
                     "status": "investigating",

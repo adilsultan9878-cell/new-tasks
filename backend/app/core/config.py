@@ -104,6 +104,10 @@ class Settings(BaseSettings):
     brain_lookback_days: int = Field(default=7, ge=1, le=90)
     rate_limit_brain_per_minute: int = 30
 
+    # --- SOC: incidents, response actions, evidence (Phase 5) --------------------------------
+    approval_ttl_hours: int = Field(default=24, ge=1, le=168)  # pending approvals expire
+    evidence_max_bytes: int = Field(default=5_000_000, ge=1, le=25_000_000)  # per evidence file
+
     # --- Realtime ----------------------------------------------------------------------------
     ws_auth_timeout_seconds: int = 10
     ws_ping_interval_seconds: int = 25
