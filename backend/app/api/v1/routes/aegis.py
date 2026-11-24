@@ -12,6 +12,7 @@ from sqlalchemy import delete, func, select
 
 from app.aegis import iot as iot_service
 from app.aegis import simulator
+from app.aegis import twin as twin_service
 from app.api.deps import DB, OrgContext, require
 from app.core.errors import not_found
 from app.models import Camera, CameraSnapshot, Device, Sensor, SensorReading
@@ -25,6 +26,7 @@ from app.schemas.aegis import (
     SensorUpdate,
     SimulatorResult,
     SnapshotOut,
+    TwinLayout,
 )
 from app.services import audit, realtime
 
@@ -304,3 +306,24 @@ def clear_simulator(ctx: Manage, request: Request, db: DB) -> dict[str, int]:
     counts = simulator.clear(db, request, org_id=ctx.org_id, user=ctx.user)
     db.commit()
     return counts
+
+
+# ----------------------------------------------------------------------------- digital twin
+@router.get("/twin")
+def get_twin(ctx: Read, db: DB, include_simulated: bool = True) -> dict:
+    """The organization's physical posture in one read model, for the 3D twin and its list view."""
+    return twin_service.snapshot(db, ctx.organization, include_simulated=include_simulated)
+
+
+@router.put("/twin/layout")
+def save_twin_layout(body: TwinLayout, ctx: Manage, request: Request, db: DB) -> dict:
+    twin_service.save_layout(
+        db,
+        request,
+        ctx.organization,
+        user=ctx.user,
+        new_areas=[a.model_dump() for a in body.areas] if body.areas is not None else None,
+        positions=[p.model_dump() for p in body.positions],
+    )
+    db.commit()
+    return twin_service.snapshot(db, ctx.organization)

@@ -154,6 +154,9 @@ class Account:
     def patch(self, url: str, **kw: Any):
         return self.client.patch(url, headers=self.headers, **kw)
 
+    def put(self, url: str, **kw: Any):
+        return self.client.put(url, headers=self.headers, **kw)
+
     def delete(self, url: str, **kw: Any):
         return self.client.delete(url, headers=self.headers, **kw)
 
