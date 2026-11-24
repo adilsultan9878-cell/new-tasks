@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, CircleDashed, Download, Lock, Wrench } from 'lucide-react'
+import { ArrowLeft, CircleDashed, Download, Lock, ShieldCheck, Wrench } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
@@ -15,6 +15,7 @@ import { dateTime, relativeTime } from '@/lib/format'
 import type { BrainDecision, BrainFactor, BrainRecommendation, BrainRunDetail, BrainTraceEntry } from '@/lib/types'
 import { useOrg } from '@/org/OrgContext'
 import { qk } from '@/org/queries'
+import { ProposeActionDialog } from '@/pages/soc/shared'
 
 import { AGENT_TITLE, AnalyzeButton, levelStyle, PriorityBadge, ScoreMeter, SUBJECT_LABEL } from './shared'
 
@@ -39,7 +40,8 @@ export function RunPage() {
 }
 
 export function RunView({ run, back }: { run: BrainRunDetail; back?: ReactNode }) {
-  const { orgId } = useOrg()
+  const { orgId, can } = useOrg()
+  const [proposal, setProposal] = useState<BrainRecommendation['proposal']>(null)
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState<unknown>(null)
   const subjectLink = run.subject_type === 'alert' ? `/org/${orgId}/events` : run.subject_type === 'device' ? `/org/${orgId}/devices` : null
@@ -125,6 +127,9 @@ export function RunView({ run, back }: { run: BrainRunDetail; back?: ReactNode }
                   </div>
                   <p className="mt-1.5 text-sm text-fg">{r.text}</p>
                   <p className="mt-1 text-xs text-fg-subtle">Because: {r.because}</p>
+                  {r.proposal && can('responses:propose') && (
+                    <Button size="sm" className="mt-2" icon={<ShieldCheck className="size-3.5" />} onClick={() => setProposal(r.proposal ?? null)}>Propose this action</Button>
+                  )}
                 </li>
               ))}
             </ol>
@@ -141,6 +146,7 @@ export function RunView({ run, back }: { run: BrainRunDetail; back?: ReactNode }
       <Panel className="mt-5" title="Tool calls" description="Every read-only tool call the agents made, in order" flush>
         <TraceTable trace={run.trace} />
       </Panel>
+      {proposal && <ProposeActionDialog runId={run.id} preset={proposal} onClose={() => setProposal(null)} />}
     </div>
   )
 }

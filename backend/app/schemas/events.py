@@ -116,6 +116,7 @@ class TriageSummary(APIModel):
 class AlertOut(APIModel):
     id: uuid.UUID
     event_id: uuid.UUID | None
+    incident_id: uuid.UUID | None = None
     title: str
     description: str | None
     severity: str

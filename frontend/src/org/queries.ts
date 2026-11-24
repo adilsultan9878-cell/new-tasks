@@ -31,6 +31,13 @@ export const qk = {
   brainRun: (orgId: string, id: string) => ['brain', orgId, 'run', id] as const,
   brainDecisions: (orgId: string, params: Record<string, unknown>) => ['brain', orgId, 'decisions', params] as const,
   brainActivity: (orgId: string) => ['brain', orgId, 'activity'] as const,
+  incidents: (orgId: string, params: Record<string, unknown>) => ['incidents', orgId, 'list', params] as const,
+  incident: (orgId: string, id: string) => ['incidents', orgId, 'detail', id] as const,
+  actions: (orgId: string, params: Record<string, unknown>) => ['actions', orgId, params] as const,
+  responseStatus: (orgId: string) => ['response', orgId] as const,
+  evidence: (orgId: string, params: Record<string, unknown>) => ['evidence', orgId, params] as const,
+  reports: (orgId: string) => ['reports', orgId, 'list'] as const,
+  report: (orgId: string, id: string) => ['reports', orgId, 'detail', id] as const,
 }
 
 export function useMemberships(enabled = true) {

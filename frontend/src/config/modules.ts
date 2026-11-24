@@ -59,7 +59,7 @@ export const MODULE_GROUPS: { key: ModuleGroupKey; label: string; caption: strin
 ]
 
 /** Highest phase that has shipped (drives the roadmap timeline). */
-export const COMPLETED_PHASE = 4
+export const COMPLETED_PHASE = 5
 
 export const PHASES: Record<number, string> = {
   1: 'Foundation',
@@ -132,16 +132,16 @@ export const MODULES: PlatformModule[] = [
     capabilities: ['Triage, Device Risk, Exposure, Threat-Intel and Posture agents', 'Tool catalogue per agent', 'Decision history', 'Guardrails enforced by tests'],
   },
   {
-    key: 'incidents', name: 'Incident Response Center', navName: 'Incident Response', group: 'sentinel', icon: Siren, status: 'planned', phase: 5,
-    path: 'm/incidents',
-    summary: 'Alert triage, incident lifecycle and controlled response actions with approvals, rollback plans and an emergency stop.',
-    capabilities: ['Alert → incident workflow', 'Approval-gated response actions', 'Rollback tracking', 'Emergency stop'],
+    key: 'incidents', name: 'Incident Response Center', navName: 'Incident Response', group: 'sentinel', icon: Siren, status: 'live', phase: 5,
+    path: 'incidents', permission: 'incidents:read',
+    summary: 'Turn alerts into incidents and respond with allow-listed actions that need approval, can be rolled back and can be stopped at once.',
+    capabilities: ['Alert → incident workflow', 'Approval-gated response actions', 'Rollback and emergency stop', 'Append-only timeline'],
   },
   {
-    key: 'forensics', name: 'Digital Forensics Lab', navName: 'Forensics Lab', group: 'sentinel', icon: Microscope, status: 'planned', phase: 5,
-    path: 'm/forensics',
-    summary: 'Evidence collection with SHA-256 integrity and chain-of-custody records.',
-    capabilities: ['Evidence vault with hashing', 'Chain of custody', 'Investigation timelines'],
+    key: 'forensics', name: 'Digital Forensics Lab', navName: 'Forensics Lab', group: 'sentinel', icon: Microscope, status: 'live', phase: 5,
+    path: 'forensics', permission: 'incidents:read',
+    summary: 'Evidence vault with SHA-256 integrity and an append-only chain of custody.',
+    capabilities: ['Files, notes and external hashes', 'Browser + server hashing', 'Verify and download with custody records', 'Immutable in the database'],
   },
   {
     key: 'automation', name: 'Workflow Automation', navName: 'Automation', group: 'sentinel', icon: Workflow, status: 'planned', phase: 8,
@@ -150,10 +150,10 @@ export const MODULES: PlatformModule[] = [
     capabilities: ['n8n integration', 'Signed webhooks', 'Scheduled & event triggers'],
   },
   {
-    key: 'reports', name: 'Reports & Analytics', navName: 'Reports', group: 'sentinel', icon: ChartColumn, status: 'planned', phase: 5,
-    path: 'm/reports',
-    summary: 'Incident, executive and compliance-ready reports. AI-written sections are labelled as such.',
-    capabilities: ['Incident reports', 'Executive summaries', 'Export to PDF'],
+    key: 'reports', name: 'Reports & Analytics', navName: 'Reports', group: 'sentinel', icon: ChartColumn, status: 'live', phase: 5,
+    path: 'reports', permission: 'reports:read',
+    summary: 'Incident and executive reports built from your own records: response times, alerts, incidents and actions. Nothing is AI-written.',
+    capabilities: ['Incident reports', 'Executive summaries (MTTA, MTTR, false positives)', 'Markdown download'],
   },
   // AEGIS ONE
   {

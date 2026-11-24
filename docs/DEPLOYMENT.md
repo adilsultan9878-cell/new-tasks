@@ -254,6 +254,8 @@ on sub-domains of one custom domain (`app.example.com` / `api.example.com`, `Sam
 | `BRAIN_AUTO_TRIAGE` | `true` | analyse every new alert automatically |
 | `BRAIN_LOOKBACK_DAYS` | `7` | event window the Brain's agents read (1-90) |
 | `RATE_LIMIT_BRAIN_PER_MINUTE` | `30` | manual analyses per user |
+| `APPROVAL_TTL_HOURS` | `24` | pending approvals of response actions expire after this (1-168) |
+| `EVIDENCE_MAX_BYTES` | `5000000` | per evidence file; files live in the database (count them against the Supabase free quota), larger material is registered by hash |
 
 ---
 

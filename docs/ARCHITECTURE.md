@@ -110,11 +110,11 @@ sequenceDiagram
 | 9 | IoT Device Security | AEGIS ONE | 6 | Designed |
 | 10 | Digital Twin | AEGIS ONE | 7 | Designed |
 | 11 | Device Management | AEGIS ONE | 2 | **Live** |
-| 12 | Incident Response Center | SENTINEL X | 5 | Designed |
-| 13 | Digital Forensics Lab | SENTINEL X | 5 | Designed |
+| 12 | Incident Response Center | SENTINEL X | 5 | **Live** |
+| 13 | Digital Forensics Lab | SENTINEL X | 5 | **Live** |
 | 14 | Agent Center | SENTINEL X | 4 | **Live** |
 | 15 | Workflow Automation | SENTINEL X | 8 | Designed |
-| 16 | Reports & Analytics | SENTINEL X | 5 | Designed |
+| 16 | Reports & Analytics | SENTINEL X | 5 | **Live** |
 | 17 | Organization Management | Admin | 1 | **Live** |
 | 18 | User & Role Management | Admin | 1 | **Live** |
 | 19 | System Settings | Admin | 1 | **Live** (status + account security) |
@@ -166,30 +166,40 @@ flowchart LR
   tool trace and a Markdown report. A device's latest score is written to `devices.risk_score`; an
   alert keeps its detection score, and the latest triage is shown next to it.
 
-## 6. Autonomous defense engine (designed — Phase 5/8)
+## 6. Controlled response (implemented — Phase 5)
 
 ```mermaid
 stateDiagram-v2
-    [*] --> proposed
-    proposed --> pending_approval: impact ≥ medium
-    proposed --> approved: low impact & policy allows
-    pending_approval --> approved: authorised human
+    [*] --> approved: low impact
+    [*] --> pending_approval: medium / high impact
+    pending_approval --> approved: approver (high: a second person)
     pending_approval --> rejected
-    pending_approval --> cancelled: expired / emergency stop
-    approved --> executing
-    executing --> succeeded
-    executing --> failed
-    succeeded --> rolled_back: rollback plan
-    failed --> rolled_back
+    pending_approval --> cancelled: requester / approver / expiry
+    approved --> approved: held by emergency stop
+    approved --> succeeded: executor
+    approved --> failed
+    succeeded --> rolled_back: reversible actions only
 ```
 
-* Actions are an allow-list (`notify_admin`, `create_alert`, `block_indicator` via an explicitly
-  configured firewall integration, `isolate_device` via an enrolled agent, `trigger_workflow` …).
-* Each action stores a `rollback_plan`; the executor refuses actions without one when a rollback
-  is possible.
-* **Emergency stop**: an organization-level kill switch that cancels pending actions and disables
-  automated execution until re-enabled by an owner.
-* The local agent accepts only signed, allow-listed *configuration* messages — never commands.
+| Action | Impact | What it changes | Rollback |
+|---|---|---|---|
+| `notify_team` | low | in-app notifications to everyone with `alerts:manage` | — |
+| `heighten_monitoring` | medium | the device's agent configuration (15 s heartbeat, all collectors) | previous configuration restored |
+| `block_indicator` | medium | watchlist verdict → malicious + block-list export | previous verdict restored / indicator removed |
+| `revoke_device` | high | device credential revoked, agent disconnected | not reversible (re-enroll) |
+| `suspend_member` | high | membership suspended (API access ends at once) | membership reactivated |
+
+* Executors only change data inside the platform; there is no shell, no network call and no third-party
+  integration. Firewalls and DNS filters can import the block list themselves.
+* `high` impact needs an approver other than the requester; an organization with a single approver may
+  self-approve, and the approval is recorded as such. Pending approvals expire (`APPROVAL_TTL_HOURS`).
+* **Emergency stop** (organization setting): every execution and rollback is held until an approver
+  releases it; held actions are run explicitly afterwards.
+* Every proposal, decision, execution and rollback is audited, broadcast in real time and added to the
+  incident's append-only timeline. Executions run in a savepoint, so a failed action changes nothing.
+* **Evidence**: bytes live in `evidence_blobs` (RLS) and are immutable; the hash, size and type of an
+  evidence item and the start of its chain of custody cannot change (PostgreSQL triggers).
+* The local agent still accepts only allow-listed *configuration* — never commands.
 
 ## 7. Security Event Engine (implemented — Phase 2)
 
@@ -271,6 +281,8 @@ sentinel-x-aegis-nexus/
 │   ├── app/
 │   │   ├── api/                 deps.py (auth, tenancy, RBAC) · v1/routes/*
 │   │   ├── core/                config · security · errors · logging · middleware · rate_limit
+│   │   ├── soc/                 SOC: incidents · actions (allow-list, approvals, emergency stop) ·
+│   │   │                        evidence (SHA-256, custody) · reports
 │   │   ├── brain/               Security Brain: orchestrator · agents · toolbox (read-only) ·
 │   │   │                        scoring · playbook · report · engine
 │   │   ├── intel/               NEXUS ZERO: client (allow-list) · providers · url · domain · ip ·
@@ -282,7 +294,8 @@ sentinel-x-aegis-nexus/
 │   │   └── services/            auth · organizations · dashboard · audit · health ·
 │   │                            devices · events (rules) · realtime (hub) · sweeper
 │   ├── alembic/versions/        0001 schema, RLS, trigger, seed · 0002 devices & events · 0003 intel ·
-│   │                            0004 pinned search_path · 0005 Security Brain
+│   │                            0004 pinned search_path · 0005 Security Brain ·
+│   │                            0006 SOC
 │   ├── scripts/                 start.sh · postgres/create_app_role.sql
 │   ├── tests/                   pytest (SQLite + PostgreSQL/RLS)
 │   └── Dockerfile

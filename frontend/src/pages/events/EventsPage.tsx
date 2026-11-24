@@ -20,6 +20,7 @@ import { useOrg } from '@/org/OrgContext'
 import { qk } from '@/org/queries'
 import { useRealtime } from '@/realtime/RealtimeProvider'
 import { AnalyzeButton, PriorityBadge, RiskBadge } from '@/pages/brain/shared'
+import { NewIncidentDialog } from '@/pages/soc/IncidentsPage'
 
 const PAGE = 50
 const CATEGORIES = ['network', 'auth', 'malware', 'phishing', 'system', 'agent', 'policy', 'iot', 'vision', 'other']
@@ -78,6 +79,7 @@ export function EventsPage() {
                 <span className="font-mono text-[11px] text-fg-subtle">{a.detection_rule}</span>
                 <TriageCell alert={a} />
                 <span className="text-xs text-fg-subtle">{relativeTime(a.created_at)}</span>
+                <AlertActions alert={a} />
               </li>
             ))}
           </ul>
@@ -285,6 +287,25 @@ function ReportEventDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </div>
       </form>
     </Dialog>
+  )
+}
+
+/** Quick triage for an open alert: acknowledge, mark false positive or open an incident. */
+function AlertActions({ alert }: { alert: Alert }) {
+  const { orgId, can } = useOrg()
+  const queryClient = useQueryClient()
+  const [incident, setIncident] = useState(false)
+  const update = useMutation({
+    mutationFn: (status: string) => api<Alert>(`/organizations/${orgId}/alerts/${alert.id}`, { method: 'PATCH', body: { status } }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['alerts', orgId] }); void queryClient.invalidateQueries({ queryKey: qk.dashboard(orgId) }) },
+  })
+  return (
+    <span className="flex items-center gap-1">
+      {can('alerts:manage') && alert.status === 'open' && <Button size="sm" variant="ghost" loading={update.isPending} onClick={() => update.mutate('acknowledged')}>Acknowledge</Button>}
+      {can('alerts:manage') && <Button size="sm" variant="ghost" disabled={update.isPending} onClick={() => update.mutate('false_positive')}>False positive</Button>}
+      {can('incidents:manage') && !alert.incident_id && <Button size="sm" variant="ghost" onClick={() => setIncident(true)}>Open incident</Button>}
+      {incident && <NewIncidentDialog presetAlert={alert} onClose={() => setIncident(false)} />}
+    </span>
   )
 }
 

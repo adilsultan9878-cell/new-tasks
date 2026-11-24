@@ -18,9 +18,9 @@ and **human-approved** automated defense. It is built phase by phase. Every feat
 is implemented end to end and covered by automated tests. Nothing in the UI is a mock or a fake
 counter.
 
-> **Status: Phase 4 (Security Brain) complete — v0.4.0.** Phases 1-3 (Foundation, Security
-> Event Engine, NEXUS ZERO) shipped in v0.1.0-v0.3.0; Phase 5 (SENTINEL X SOC) is next. The Brain
-> is deterministic: no AI model is configured, and nothing is presented as AI-generated.
+> **Status: Phase 5 (SENTINEL X SOC) complete — v0.5.0.** Phases 1-4 shipped in v0.1.0-v0.4.0;
+> Phase 6 (AEGIS ONE: computer vision and IoT) is next. The console was simplified in this release:
+> only working modules are in the sidebar, everything planned is on the "What's next" page.
 > See [docs/ROADMAP.md](docs/ROADMAP.md) for the full list of completed and pending features.
 
 ## What works today
@@ -46,6 +46,9 @@ counter.
 | 🧾 **Explainable results** | Every finding shows its source and whether it is verified intelligence or a deterministic check. Each investigation lists the sources consulted, not configured or unavailable, plus a timeline. With no evidence the verdict is "No known threat found", never "safe". Malicious results raise alerts automatically. |
 | 🧠 **Security Brain** | An orchestrator runs five specialised agents over an alert, a device or the whole organization and scores risk with a published, weighted model (every model totals 100 points). It shows the factor breakdown, data coverage (missing data lowers coverage instead of being hidden), findings with evidence, playbook recommendations and the full tool trace, and you can download a Markdown report. Every new alert is triaged automatically (P1-P4). The engine is deterministic: no AI model is used. |
 | 🤖 **Agent Center** | Lists each agent, the read-only tools it may use and its decision history. Guardrails are enforced in code and by tests: agents cannot write, run commands or reach the network, and recommendations are advice only. |
+| 🚨 **Incident Response** | Turn alerts into incidents (`INC-2026-0001`), move them through six statuses, assign and take notes on an append-only timeline. Response actions come from a fixed allow-list: notify responders, heighten monitoring, block an IP/domain/hash, revoke a device, suspend a member. Medium and high impact actions need an approver (high: a second person), can be rolled back where possible, and an **emergency stop** holds everything. |
+| 🔬 **Forensics Lab** | Evidence vault: files and notes are hashed (SHA-256) in your browser and on the server, stored immutably, and every download or verification is added to the chain of custody. Large material can be registered by hash. |
+| 📑 **Reports** | Incident reports and executive summaries (time to acknowledge, time to resolve, false-positive rate, actions, riskiest devices), built only from your records and downloadable as Markdown. |
 | 🗺️ **Roadmap pages** | Modules that are not built yet show what they will do and which phase delivers them. They contain no fake buttons. |
 
 ## Architecture at a glance
@@ -134,11 +137,11 @@ The Threat Intelligence page shows which sources are configured.
 
 | Suite | Command | Covers |
 |---|---|---|
-| Backend (SQLite) | `cd backend; pytest` | health, auth, organizations, RBAC, tenant isolation, enrollment, device auth, ingestion, detection rules, sweeper, WebSocket, real agent ↔ live server, investigations (URL/domain/IP/hash/email), SSRF guard, KEV/NVD, scopes, Nmap import, Security Brain agents, scoring and read-only guards (109 tests) |
-| Backend (PostgreSQL + RLS) | `$env:TEST_DATABASE_URL="postgresql://postgres:<pw>@localhost:5432/postgres"; pytest` | everything above, run as the least-privileged DB role, plus RLS proofs for every tenant table (116 tests) |
+| Backend (SQLite) | `cd backend; pytest` | health, auth, organizations, RBAC, tenant isolation, enrollment, device auth, ingestion, detection rules, sweeper, WebSocket, real agent ↔ live server, investigations (URL/domain/IP/hash/email), SSRF guard, KEV/NVD, scopes, Nmap import, Security Brain agents, scoring and read-only guards, incidents, approvals, emergency stop, evidence and reports (124 tests) |
+| Backend (PostgreSQL + RLS) | `$env:TEST_DATABASE_URL="postgresql://postgres:<pw>@localhost:5432/postgres"; pytest` | everything above, run as the least-privileged DB role, plus RLS proofs for every tenant table and evidence immutability triggers (132 tests) |
 | Agent | `cd agent; python -m pytest` | config allow-list, no-command-execution guard, collectors, detectors, offline spool, revocation (19 tests; CI runs them on Linux **and Windows**) |
-| Frontend unit/component | `cd frontend; npm test` | API client, session refresh, sidebar RBAC, dashboard, devices, events, live WebSocket client, Pages proxy, investigation view, Security Brain pages (30 tests) |
-| End-to-end (Playwright) | `cd frontend; npx playwright install chromium; npx playwright test` | sign-up → org → dashboard → sign-in again; tenant isolation and RBAC; **real agent enrolled from the console, shown live, then revoked**; high-severity report → alert toast; phishing analysis → alert; Nmap import respects scopes; new alert auto-triaged by the Security Brain, organization analysis and report download (9 tests, intel providers offline for determinism) |
+| Frontend unit/component | `cd frontend; npm test` | API client, session refresh, sidebar RBAC, dashboard, devices, events, live WebSocket client, Pages proxy, investigation view, Security Brain, roadmap and SOC pages (35 tests) |
+| End-to-end (Playwright) | `cd frontend; npx playwright install chromium; npx playwright test` | sign-up → org → dashboard → sign-in again; tenant isolation and RBAC; **real agent enrolled from the console, shown live, then revoked**; high-severity report → alert toast; phishing analysis → alert; Nmap import respects scopes; new alert auto-triaged by the Security Brain, organization analysis and report download; alert → incident → approved block → evidence → report, and the emergency stop (11 tests, intel providers offline for determinism) |
 | Lint / types | `ruff check .` · `npm run lint` · `npm run typecheck` | |
 
 CI runs all of the above on every push ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
@@ -152,6 +155,11 @@ frontend/   React console: src/ (auth, org, components, pages, config/modules.ts
 docker/     Postgres init (creates the RLS-enforcing app role)
 docs/       Architecture, database, security/threat model, deployment, roadmap
 ```
+
+## Credits
+
+Some visual components are adapted from [Magic UI](https://github.com/magicuidesign/magicui) (MIT); see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Responsible use
 

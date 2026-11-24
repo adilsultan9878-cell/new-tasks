@@ -57,6 +57,28 @@ export function RealtimeProvider({ orgId, children }: { orgId: string; children:
           // High/critical events always raise an alert, so alerts are the single source of toasts.
           push({ tone: 'critical', title: `${String(d.severity ?? '').charAt(0).toUpperCase()}${String(d.severity ?? '').slice(1)} alert`, body: String(d.title ?? '') })
           break
+        case 'incident.updated':
+          void queryClient.invalidateQueries({ queryKey: ['incidents', orgId] })
+          void queryClient.invalidateQueries({ queryKey: ['evidence', orgId] })
+          void queryClient.invalidateQueries({ queryKey: qk.dashboard(orgId) })
+          break
+        case 'action.updated':
+          void queryClient.invalidateQueries({ queryKey: ['actions', orgId] })
+          void queryClient.invalidateQueries({ queryKey: ['incidents', orgId] })
+          void queryClient.invalidateQueries({ queryKey: ['response', orgId] })
+          void queryClient.invalidateQueries({ queryKey: qk.notifications })
+          break
+        case 'response.emergency_stop':
+          void queryClient.invalidateQueries({ queryKey: ['response', orgId] })
+          push({ tone: 'critical', title: d.engaged ? 'Emergency stop engaged' : 'Emergency stop released', body: d.engaged ? 'All response actions are on hold.' : 'Response actions can run again.' })
+          break
+        case 'report.created':
+          void queryClient.invalidateQueries({ queryKey: ['reports', orgId] })
+          break
+        case 'alert.updated':
+          void queryClient.invalidateQueries({ queryKey: ['alerts', orgId] })
+          void queryClient.invalidateQueries({ queryKey: qk.dashboard(orgId) })
+          break
         case 'brain.run_completed':
           void queryClient.invalidateQueries({ queryKey: ['brain', orgId] })
           void queryClient.invalidateQueries({ queryKey: ['alerts', orgId] })

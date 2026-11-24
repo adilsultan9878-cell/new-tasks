@@ -18,7 +18,7 @@ export const membership = (role: 'owner' | 'viewer' = 'owner', permissions?: str
     created_at: '2026-11-20T10:00:00Z',
   },
   role: { key: role, name: role === 'owner' ? 'Owner' : 'Viewer', description: null, rank: role === 'owner' ? 100 : 10 },
-  permissions: permissions ?? (role === 'owner' ? ['dashboard:read', 'org:read', 'org:update', 'members:read', 'members:manage', 'audit:read', 'devices:read', 'devices:manage', 'events:read', 'events:ingest', 'alerts:read', 'alerts:manage', 'intel:read', 'intel:manage', 'investigations:run', 'network:read', 'network:manage', 'brain:read', 'brain:run'] : ['dashboard:read', 'org:read', 'members:read', 'audit:read']),
+  permissions: permissions ?? (role === 'owner' ? ['dashboard:read', 'org:read', 'org:update', 'members:read', 'members:manage', 'audit:read', 'devices:read', 'devices:manage', 'events:read', 'events:ingest', 'alerts:read', 'alerts:manage', 'intel:read', 'intel:manage', 'investigations:run', 'network:read', 'network:manage', 'brain:read', 'brain:run', 'incidents:read', 'incidents:manage', 'responses:propose', 'responses:approve', 'evidence:manage', 'reports:read', 'reports:manage'] : ['dashboard:read', 'org:read', 'members:read', 'audit:read']),
   member_count: 1,
 })
 

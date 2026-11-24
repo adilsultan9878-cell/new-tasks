@@ -125,6 +125,19 @@ flowchart LR
 | Analysis breaking detection | a Brain error drops events | automatic triage runs in a savepoint; failures are logged and ingestion continues |
 | Abuse / load | scripted analyses | per-user limit (`RATE_LIMIT_BRAIN_PER_MINUTE`, 30/min); tools cap rows (≤ 500 events, ≤ 2,000 assets) |
 
+## Phase 5 additions: SOC response and evidence
+
+| Threat | Example | Control (implemented, tested) |
+|---|---|---|
+| Uncontrolled automation | an action runs without anyone deciding | fixed allow-list; medium/high impact waits for an approver; approvals expire |
+| One person acting alone | an analyst approves their own revocation | high impact needs a second approver (single-approver organizations are recorded as self-approved); proposing and approving are separate permissions |
+| Runaway response | a bad action keeps firing | emergency stop holds every execution and rollback; reversible actions store a rollback plan |
+| Lock-out / abuse of suspension | suspending yourself, a higher role or the last owner | guarded at proposal **and** at execution time |
+| Blocking your own network | putting an internal IP on the block list | private, loopback, link-local and multicast addresses are rejected |
+| Evidence tampering | editing a stored file or rewriting custody | blobs immutable and hash/size/type/custody guarded by database triggers; every download and verification is a custody entry |
+| Hostile evidence files | a script or executable uploaded as evidence | never executed or rendered; downloads are `application/octet-stream` + `nosniff` + `attachment`, filenames sanitised; 5 MB limit |
+| Cross-tenant access | rolling back another organization's action | every lookup is scoped to the caller's organization (404) with RLS underneath |
+
 ## Reporting a vulnerability
 
 Please do not open public issues for security problems. Email the maintainer privately with steps

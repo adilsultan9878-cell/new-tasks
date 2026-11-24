@@ -87,12 +87,21 @@ published rules over the organization's own data. No AI model is used.
 | AI model provider (Ollama / hosted) | ⬜ | not configured by choice; if added, it would only contribute separately labelled narrative text on top of the deterministic result |
 | Asset-to-CVE matching | ⬜ | needs a reliable product/version (CPE) inventory; planned with Phase 9 |
 
-## Phase 5 — SENTINEL X SOC ⬜
+## Phase 5 — SENTINEL X SOC ✅ (v0.5.0)
 
-- Alerts triage, incident lifecycle, assignment
-- Response actions with approvals, rollback plans and emergency stop
-- Forensic evidence vault with SHA-256 and chain of custody
-- Reports (incident / executive / compliance)
+| Feature | Status | Evidence |
+|---|---|---|
+| Alert triage (acknowledge, resolve, false positive) and incident lifecycle: created from alerts (`INC-YYYY-NNNN`, severity from the alerts), six statuses, assignment, notes, append-only timeline; closing needs decided actions and resolves linked alerts | ✅ | `tests/test_soc.py`, e2e `soc.spec.ts` |
+| Response actions on a fixed allow-list: notify responders (low, runs at once), heighten monitoring and add to block list (medium, approval), revoke device and suspend member (high, second approver) — all executed inside the platform, nothing external | ✅ | `test_low_impact_action_runs_immediately`, `test_high_impact_actions_need_a_second_approver` |
+| Separation of duties (sole approver may self-approve, recorded), approval expiry, cancellation, rollback where reversible, guards (no self-suspension, rank, last owner) | ✅ | `test_sole_approver_may_self_approve_and_it_is_recorded`, `test_suspend_member_and_restore`, `test_pending_approvals_expire` |
+| Organization-wide emergency stop that holds every execution and rollback | ✅ | `test_emergency_stop_holds_every_execution`, e2e |
+| Block-list export (plain text per indicator type) for firewalls / DNS filters | ✅ | `test_block_indicator_needs_approval_feeds_blocklist_and_rolls_back` |
+| Evidence vault: files (browser + server SHA-256, must match), notes, external hashes; append-only chain of custody (collected, downloaded, verified); database triggers make stored bytes, hash and custody history immutable | ✅ | `test_evidence_vault_hashes_and_tracks_custody`, `test_evidence_is_immutable_in_the_database` |
+| Incident and executive reports (MTTA, MTTR, false-positive rate, actions, riskiest devices, posture), Markdown download, no AI-written text | ✅ | `test_incident_and_executive_reports` |
+| Security Brain recommendations become one-click action proposals (still approval-gated) | ✅ | `test_brain_recommendations_become_one_click_proposals` |
+| Incident Response, Forensics Lab and Reports pages | ✅ | `IncidentsPage.test.tsx`, `IncidentPage.test.tsx`, e2e |
+| PDF export, compliance report templates | ⬜ | Markdown download today; print-to-PDF from the browser works |
+| Actions on external systems (firewall API, EDR) | ⬜ | needs explicitly configured integrations — Phase 8 |
 
 ## Phase 6 — AEGIS ONE ⬜
 

@@ -251,6 +251,7 @@ export interface Alert {
   risk_score: number | null
   detection_rule: string | null
   created_at: string
+  incident_id?: string | null
   /** Latest Security Brain triage of this alert (null until analysed). */
   triage?: TriageSummary | null
 }
@@ -447,6 +448,8 @@ export interface BrainRecommendation {
   agent: string
   because: string
   evidence: EvidenceRef[]
+  /** A response action the analyst can propose in one click (it still needs approval). */
+  proposal?: { action_type: ActionType; target: Record<string, string> } | null
 }
 
 export interface BrainDecision {
@@ -528,4 +531,141 @@ export interface BrainActivity {
   runs_total: number
   runs_by_trigger: Record<string, number>
   agents: { agent: AgentName; findings: number; recommendations: number; last_decision_at: string | null }[]
+}
+
+// --------------------------------------------------------------------- SENTINEL X SOC (Phase 5)
+export type IncidentStatus = 'open' | 'investigating' | 'contained' | 'eradicated' | 'recovered' | 'closed'
+export type ActionType = 'notify_team' | 'heighten_monitoring' | 'block_indicator' | 'revoke_device' | 'suspend_member'
+export type ActionStatus = 'pending_approval' | 'approved' | 'rejected' | 'executing' | 'succeeded' | 'failed' | 'rolled_back' | 'cancelled'
+export type Impact = 'low' | 'medium' | 'high'
+
+export interface Incident {
+  id: string
+  reference: string
+  title: string
+  summary: string | null
+  severity: Severity
+  status: IncidentStatus
+  assigned_to: string | null
+  assignee_name: string | null
+  opened_by: string | null
+  opened_at: string
+  closed_at: string | null
+  updated_at: string
+  alert_count: number
+  pending_actions: number
+}
+
+export interface TimelineEntry {
+  at: string
+  kind: string
+  text: string
+  actor: string | null
+  actor_id: string | null
+}
+
+export interface ApprovalInfo {
+  id: string
+  status: 'pending' | 'approved' | 'rejected' | 'expired'
+  requested_by: string | null
+  decided_by: string | null
+  decided_by_name: string | null
+  decided_at: string | null
+  comment: string | null
+  expires_at: string | null
+}
+
+export interface ResponseAction {
+  id: string
+  incident_id: string | null
+  incident_reference: string | null
+  proposed_by_run_id: string | null
+  action_type: ActionType
+  title: string | null
+  reason: string | null
+  impact: Impact
+  reversible: boolean
+  requires_approval: boolean
+  status: ActionStatus
+  target: Record<string, string>
+  result: Record<string, unknown>
+  requested_by: string | null
+  requested_by_name: string | null
+  executed_at: string | null
+  rolled_back_at: string | null
+  created_at: string
+  approval: ApprovalInfo | null
+}
+
+export interface ActionTypeInfo {
+  key: ActionType
+  title: string
+  impact: Impact
+  reversible: boolean
+  description: string
+  target_fields: string[]
+}
+
+export interface EmergencyStopState {
+  engaged: boolean
+  reason: string | null
+  at: string | null
+  actor: string | null
+}
+
+export interface ResponseStatus {
+  emergency_stop: EmergencyStopState
+  pending_approvals: number
+  approvers: number
+  action_types: ActionTypeInfo[]
+}
+
+export interface CustodyEntry {
+  at: string
+  action: string
+  actor: string | null
+  note?: string | null
+  sha256?: string | null
+  result?: string | null
+}
+
+export interface EvidenceItem {
+  id: string
+  incident_id: string | null
+  incident_reference: string | null
+  evidence_type: 'file' | 'note' | 'external'
+  title: string | null
+  description: string | null
+  filename: string | null
+  content_type: string | null
+  sha256: string | null
+  size_bytes: number | null
+  stored: boolean
+  collected_by: string | null
+  collected_at: string
+  chain_of_custody: CustodyEntry[]
+}
+
+export interface ReportSummary {
+  id: string
+  incident_id: string | null
+  title: string
+  report_type: 'incident' | 'executive'
+  status: string
+  is_ai_generated: boolean
+  generated_by: string | null
+  created_at: string
+}
+
+export interface ReportDetail extends ReportSummary {
+  markdown: string
+  metrics: Record<string, unknown>
+}
+
+export interface IncidentDetail extends Incident {
+  timeline: TimelineEntry[]
+  alerts: Alert[]
+  actions: ResponseAction[]
+  evidence: EvidenceItem[]
+  reports: ReportSummary[]
 }

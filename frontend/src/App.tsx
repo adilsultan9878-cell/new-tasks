@@ -23,6 +23,10 @@ import { ThreatIntelPage } from '@/pages/intel/ThreatIntelPage'
 import { VulnerabilitiesPage } from '@/pages/intel/VulnerabilitiesPage'
 import { ModulePage } from '@/pages/modules/ModulePage'
 import { RoadmapPage } from '@/pages/modules/RoadmapPage'
+import { ForensicsPage } from '@/pages/soc/ForensicsPage'
+import { IncidentPage } from '@/pages/soc/IncidentPage'
+import { IncidentsPage } from '@/pages/soc/IncidentsPage'
+import { ReportPage, ReportsPage } from '@/pages/soc/ReportsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { CreateOrganizationPage } from '@/pages/onboarding/CreateOrganizationPage'
 import { MembersPage } from '@/pages/org/MembersPage'
@@ -68,6 +72,11 @@ export const routes = [
           { path: 'brain', element: <BrainPage /> },
           { path: 'brain/runs/:runId', element: <RunPage /> },
           { path: 'agents', element: <AgentCenterPage /> },
+          { path: 'incidents', element: <IncidentsPage /> },
+          { path: 'incidents/:incidentId', element: <IncidentPage /> },
+          { path: 'forensics', element: <ForensicsPage /> },
+          { path: 'reports', element: <ReportsPage /> },
+          { path: 'reports/:reportId', element: <ReportPage /> },
           { path: 'organization', element: <OrganizationPage /> },
           { path: 'members', element: <MembersPage /> },
           { path: 'audit', element: <AuditLogPage /> },

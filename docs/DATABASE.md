@@ -196,6 +196,7 @@ applied through Supabase's SQL Editor when there is no direct connection.
 | `0002` | device enrollment tokens and event-ingestion columns |
 | `0003` | network scopes, investigation timeline/details, intel and network permissions |
 | `0004` | pinned `search_path` on the RLS helper and audit trigger functions |
+| `0006` | SOC: `incidents.timeline` and unique reference, `alerts.acknowledged_at`, response action title/reason/reversible and allow-listed type, evidence title/filename/content type, `evidence_blobs` (RLS), immutability triggers |
 | `0005` | Security Brain: `agent_runs` subject, creator, risk score/level, coverage, factors, trace and report; `agent_decisions` agent and severity; permissions `brain:read` / `brain:run` |
 
 Migrations never import application models for data changes (seed data is frozen inside the
