@@ -7,7 +7,7 @@ from datetime import datetime
 from pydantic import EmailStr, Field, field_validator
 
 from app.schemas.auth import _clean_name
-from app.schemas.common import APIModel
+from app.schemas.common import APIModel, no_nulls
 
 SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{1,62}[a-z0-9])$")
 INDUSTRIES = (
@@ -52,6 +52,7 @@ class OrganizationCreate(APIModel):
 
 
 class OrganizationUpdate(APIModel):
+    _no_nulls = no_nulls("name")
     name: str | None = Field(default=None, min_length=2, max_length=120)
     description: str | None = Field(default=None, max_length=1000)
     industry: str | None = None

@@ -58,6 +58,7 @@ class SystemHealth(APIModel):
     environment: str
     database: DatabaseHealth
     realtime: str
+    rate_limiter: str = "memory"  # memory | redis | redis_unavailable
     uptime_seconds: int
 
 

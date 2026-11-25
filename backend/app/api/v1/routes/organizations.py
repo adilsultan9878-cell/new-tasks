@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
 from app.api.deps import DB, CurrentOrg, CurrentPrincipal, OrgContext, load_permissions, require
 from app.models import OrganizationMember, Role
@@ -121,6 +122,7 @@ def update_organization(
 def list_members(ctx: Annotated[OrgContext, Depends(require("members:read"))], db: DB) -> list[MemberOut]:
     members = db.scalars(
         select(OrganizationMember)
+        .options(joinedload(OrganizationMember.user))  # one query, not one per member
         .where(OrganizationMember.organization_id == ctx.org_id)
         .order_by(OrganizationMember.created_at)
     ).all()

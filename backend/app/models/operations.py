@@ -722,6 +722,48 @@ class Report(UUIDPrimaryKey, Timestamps, Base):
     generated_by: Mapped[uuid.UUID | None] = _user_fk()
 
 
+# ------------------------------------------------------------------------------ research lab
+class LabDataset(UUIDPrimaryKey, Base):
+    """A frozen, labelled copy of recorded events (or uploaded lab data) for rule experiments."""
+
+    __tablename__ = "lab_datasets"
+    __table_args__ = (
+        CheckConstraint(in_values("source", ("events", "upload")), name="source"),
+        Index("ix_lab_datasets_org_created", "organization_id", "created_at"),
+    )
+
+    organization_id: Mapped[uuid.UUID] = _org_fk()
+    name: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str | None] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(16))
+    params: Mapped[dict[str, Any]] = mapped_column(default=dict)  # how it was built (window, filters)
+    rows: Mapped[list[Any]] = mapped_column(default=list)  # minimal event records, time-ordered
+    row_count: Mapped[int] = mapped_column(Integer, default=0)
+    label_counts: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    sha256: Mapped[str] = mapped_column(String(64))
+    includes_simulated: Mapped[bool] = _simulated()
+    created_by: Mapped[uuid.UUID | None] = _user_fk()
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class LabExperiment(UUIDPrimaryKey, Base):
+    """One rule evaluated on one dataset: inputs are pinned by hash so the result can be reproduced."""
+
+    __tablename__ = "lab_experiments"
+    __table_args__ = (Index("ix_lab_experiments_org_created", "organization_id", "created_at"),)
+
+    organization_id: Mapped[uuid.UUID] = _org_fk()
+    dataset_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("lab_datasets.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(120))
+    rule: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    rule_sha256: Mapped[str] = mapped_column(String(64))
+    dataset_sha256: Mapped[str] = mapped_column(String(64))
+    engine_version: Mapped[str] = mapped_column(String(16))
+    results: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    created_by: Mapped[uuid.UUID | None] = _user_fk()
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
 # Tables protected by the tenant_isolation RLS policy (organization_id = current org).
 TENANT_TABLES: tuple[str, ...] = (
     "devices",
@@ -747,5 +789,7 @@ TENANT_TABLES: tuple[str, ...] = (
     "automation_workflows",
     "automation_runs",
     "webhook_deliveries",
+    "lab_datasets",
+    "lab_experiments",
     "reports",
 )

@@ -21,6 +21,8 @@ services:
         value: "false"
       - key: JWT_SECRET
         generateValue: true
+      - key: REDIS_URL # optional: shared rate limits for several instances (Render Key Value / Upstash); empty = per instance
+        sync: false
       - key: AUTOMATION_SIGNING_KEY # master key for webhook signing secrets (Phase 8); never share it
         generateValue: true
       - key: CORS_ORIGINS # e.g. https://sentinel-x.pages.dev

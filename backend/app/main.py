@@ -71,6 +71,7 @@ def create_app() -> FastAPI:
         docs_url="/docs" if docs_enabled else None,
         redoc_url=None,
         openapi_url="/openapi.json" if docs_enabled else None,
+        max_body_size=settings.max_request_bytes,  # upload routes override it (app/core/limits.py)
     )
     install_error_handlers(app)
     install_middleware(app)

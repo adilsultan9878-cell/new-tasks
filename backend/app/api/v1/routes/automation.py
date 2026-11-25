@@ -17,6 +17,7 @@ from sqlalchemy import func, select
 
 from app.api.deps import DB, OrgContext, require
 from app.automation import catalog, delivery, engine, signing, targets
+from app.core import limits
 from app.core.config import get_settings
 from app.core.errors import AppError, not_found
 from app.core.rate_limit import enforce
@@ -456,7 +457,7 @@ def list_runs(
     status_: Annotated[str | None, Query(alias="status")] = None,
     workflow_id: uuid.UUID | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    offset: Annotated[int, Query(ge=0, le=100_000)] = 0,
 ) -> Page[RunOut]:
     engine.expire_stale(db, ctx.org_id)
     db.commit()
@@ -673,7 +674,7 @@ def list_deliveries(
     webhook_id: uuid.UUID | None = None,
     status_: Annotated[str | None, Query(alias="status")] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    offset: Annotated[int, Query(ge=0, le=100_000)] = 0,
 ) -> Page[DeliveryOut]:
     filters = [WebhookDelivery.organization_id == ctx.org_id]
     if webhook_id:
@@ -722,7 +723,10 @@ def retry_delivery(delivery_id: uuid.UUID, ctx: Manage, db: DB, request: Request
 
 # ------------------------------------------------------------------------------ incoming hooks
 @hooks_router.post(
-    "/{org_id}/{workflow_id}", status_code=status.HTTP_202_ACCEPTED, response_model=HookAccepted
+    "/{org_id}/{workflow_id}",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=HookAccepted,
+    max_body_size=limits.inbound_hook(),
 )
 async def incoming_hook(org_id: uuid.UUID, workflow_id: uuid.UUID, request: Request, db: DB) -> HookAccepted:
     """Start a webhook-triggered workflow. Authenticated only by the HMAC signature."""

@@ -146,13 +146,10 @@ def sensor_readings(
 
 @router.get("/hubs", response_model=list[HubOut])
 def list_hubs(ctx: Read, db: DB) -> list[HubOut]:
-    counts = dict(
-        db.execute(
-            select(Sensor.device_id, func.count())
-            .where(Sensor.organization_id == ctx.org_id)
-            .group_by(Sensor.device_id)
-        ).all()
-    )
+    by_device: dict[uuid.UUID, list[Sensor]] = {}
+    for s in db.scalars(select(Sensor).where(Sensor.organization_id == ctx.org_id)):
+        by_device.setdefault(s.device_id, []).append(s)
+    counts = {d: len(v) for d, v in by_device.items()}
     devices = db.scalars(
         select(Device).where(
             Device.organization_id == ctx.org_id, Device.id.in_([d for d in counts if d] or [uuid.uuid4()])
@@ -165,7 +162,7 @@ def list_hubs(ctx: Read, db: DB) -> list[HubOut]:
             status=d.status,
             is_simulated=d.is_simulated,
             sensor_count=int(counts.get(d.id, 0)),
-            actuators=iot_service.actuator_state(db, d),
+            actuators=iot_service.actuator_state(db, d, by_device.get(d.id, [])),
         )
         for d in sorted(devices, key=lambda d: d.name)
     ]

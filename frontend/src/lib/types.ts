@@ -113,6 +113,7 @@ export interface SystemHealth {
     row_level_security: 'enforced' | 'bypassed_by_role' | 'not_supported' | 'unknown'
   }
   realtime: string
+  rate_limiter?: 'memory' | 'redis' | 'redis_unavailable'
   uptime_seconds: number
 }
 
