@@ -307,4 +307,7 @@ def ingest(
         from app.brain.orchestrator import auto_triage  # local import: the Brain reads event data
 
         auto_triage(db, org_id, [a.id for a in outcome.alerts])
+        from app.automation.engine import on_alerts  # local import: automation reads alerts
+
+        on_alerts(db, org_id, outcome.alerts)
     return outcome

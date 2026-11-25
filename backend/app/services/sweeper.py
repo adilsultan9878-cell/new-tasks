@@ -15,6 +15,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.automation import engine as automation
 from app.core.config import get_settings
 from app.db.session import get_sessionmaker, set_tenant_context
 from app.models import CameraSnapshot, Device, Organization, SecurityEvent, SensorReading
@@ -65,6 +66,7 @@ def sweep_offline_devices(db: Session | None = None, now: datetime | None = None
                     )
                 )
                 realtime.queue_broadcast(db, org_id, "device.updated", device_summary(device))
+                automation.on_device_offline(db, device)
                 marked += 1
             db.commit()
     finally:

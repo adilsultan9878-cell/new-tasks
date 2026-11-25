@@ -25,6 +25,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     import asyncio
     import contextlib
 
+    from app.automation import signing, worker
     from app.services import sweeper
 
     settings = get_settings()
@@ -39,13 +40,23 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         settings.environment,
         settings.database_url.split("://", 1)[0],
     )
-    sweep_task = asyncio.create_task(sweeper.run_forever(), name="device-sweeper")
+    if signing.key_source() != "dedicated":
+        log.warning(
+            "AUTOMATION_SIGNING_KEY is not set: webhook secrets are derived from %s",
+            "JWT_SECRET" if signing.key_source() == "jwt" else "an ephemeral key (they change on restart)",
+        )
+    tasks = [
+        asyncio.create_task(sweeper.run_forever(), name="device-sweeper"),
+        asyncio.create_task(worker.run_forever(), name="automation-worker"),
+    ]
     try:
         yield
     finally:
-        sweep_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await sweep_task
+        for task in tasks:
+            task.cancel()
+        for task in tasks:
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
 
 
 def create_app() -> FastAPI:

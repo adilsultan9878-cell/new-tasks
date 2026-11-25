@@ -17,6 +17,7 @@ from app.models.operations import (
     AgentRun,
     Alert,
     Approval,
+    AutomationRun,
     AutomationWorkflow,
     Camera,
     CameraSnapshot,
@@ -36,6 +37,7 @@ from app.models.operations import (
     SensorReading,
     ThreatIndicator,
     VulnerabilityRecord,
+    WebhookDelivery,
 )
 
 __all__ = [
@@ -45,6 +47,7 @@ __all__ = [
     "Alert",
     "Approval",
     "AuditLog",
+    "AutomationRun",
     "AutomationWorkflow",
     "Camera",
     "CameraSnapshot",
@@ -72,4 +75,5 @@ __all__ = [
     "User",
     "UserSession",
     "VulnerabilityRecord",
+    "WebhookDelivery",
 ]

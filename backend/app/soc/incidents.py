@@ -144,6 +144,9 @@ def create(
         exclude=user.id,
     )
     realtime.queue_broadcast(db, org_id, "incident.updated", summary(incident))
+    from app.automation.engine import on_incident  # local import: avoids an import cycle
+
+    on_incident(db, incident)
     return incident
 
 

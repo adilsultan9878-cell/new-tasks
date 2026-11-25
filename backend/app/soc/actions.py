@@ -574,6 +574,9 @@ def propose(
             severity="high",
             exclude=user.id,
         )
+        from app.automation.engine import on_pending_approval  # local import: avoids an import cycle
+
+        on_pending_approval(db, a)
     else:
         execute(db, request, a, user=user)
     realtime.queue_broadcast(db, org_id, "action.updated", _summary(a))

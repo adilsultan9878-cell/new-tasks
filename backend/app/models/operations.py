@@ -73,6 +73,10 @@ ACTION_TYPES = ("notify_team", "heighten_monitoring", "block_indicator", "revoke
 EVIDENCE_KINDS = ("file", "note", "external")
 APPROVAL_STATUSES = ("pending", "approved", "rejected", "expired")
 REPORT_STATUSES = ("draft", "generating", "ready", "failed")
+INTEGRATION_STATUSES = ("active", "disabled")
+WORKFLOW_TRIGGERS = ("event", "schedule", "manual", "webhook")
+RUN_STATUSES = ("awaiting_approval", "succeeded", "failed", "rejected", "expired", "skipped")
+DELIVERY_STATUSES = ("pending", "delivered", "failed")  # failed = gave up after the last retry
 
 
 def _org_fk() -> Mapped[uuid.UUID]:
@@ -588,22 +592,39 @@ class Approval(UUIDPrimaryKey, Base):
 
 # --------------------------------------------------------------------- automation & reporting
 class Integration(UUIDPrimaryKey, Timestamps, Base):
+    """An external destination. Phase 8: signed outgoing webhooks (generic or n8n).
+
+    The signing secret is never stored: it is derived from AUTOMATION_SIGNING_KEY, the row id and
+    ``secret_version`` (rotation bumps the version), so a database leak reveals no webhook secret.
+    """
+
     __tablename__ = "integrations"
-    __table_args__ = (UniqueConstraint("organization_id", "name"),)
+    __table_args__ = (
+        UniqueConstraint("organization_id", "name"),
+        CheckConstraint(in_values("status", INTEGRATION_STATUSES), name="status"),
+    )
 
     organization_id: Mapped[uuid.UUID] = _org_fk()
-    provider: Mapped[str] = mapped_column(String(48))  # n8n, firewall, abuseipdb, urlhaus, ...
+    provider: Mapped[str] = mapped_column(String(48))  # webhook | n8n
     name: Mapped[str] = mapped_column(String(120))
     status: Mapped[str] = mapped_column(String(16), default="disabled")
-    config: Mapped[dict[str, Any]] = mapped_column(default=dict)  # non-secret settings only
-    secret_ref: Mapped[str | None] = mapped_column(String(120))  # name of env var / vault key
-    last_sync_at: Mapped[datetime | None]
+    config: Mapped[dict[str, Any]] = mapped_column(
+        default=dict
+    )  # non-secret settings only: {url, description}
+    secret_ref: Mapped[str | None] = mapped_column(String(120))  # unused for webhooks (derived secret)
+    secret_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    failure_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # consecutive
+    last_error: Mapped[str | None] = mapped_column(Text)
+    last_sync_at: Mapped[datetime | None]  # last successful delivery
     created_by: Mapped[uuid.UUID | None] = _user_fk()
 
 
 class AutomationWorkflow(UUIDPrimaryKey, Timestamps, Base):
     __tablename__ = "automation_workflows"
-    __table_args__ = (Index("ix_automation_workflows_org", "organization_id"),)
+    __table_args__ = (
+        CheckConstraint(in_values("trigger_type", WORKFLOW_TRIGGERS), name="trigger_type"),
+        Index("ix_automation_workflows_org", "organization_id"),
+    )
 
     organization_id: Mapped[uuid.UUID] = _org_fk()
     integration_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -612,12 +633,76 @@ class AutomationWorkflow(UUIDPrimaryKey, Timestamps, Base):
     name: Mapped[str] = mapped_column(String(120))
     description: Mapped[str | None] = mapped_column(Text)
     trigger_type: Mapped[str] = mapped_column(String(16))  # event, schedule, manual, webhook
-    trigger_config: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    trigger_config: Mapped[dict[str, Any]] = mapped_column(
+        default=dict
+    )  # {event, min_severity, every_minutes, ...}
+    steps: Mapped[list[Any]] = mapped_column(default=list)  # [{type, ...params}] from the allow-list
     external_workflow_id: Mapped[str | None] = mapped_column(String(120))  # e.g. n8n workflow id
     enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     requires_approval: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    secret_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")  # inbound hook secret
+    next_run_at: Mapped[datetime | None]
     last_run_at: Mapped[datetime | None]
+    last_status: Mapped[str | None] = mapped_column(String(24))
     created_by: Mapped[uuid.UUID | None] = _user_fk()
+
+
+class AutomationRun(UUIDPrimaryKey, Base):
+    """One execution of a workflow: what started it, who approved it and what every step did."""
+
+    __tablename__ = "automation_runs"
+    __table_args__ = (
+        CheckConstraint(in_values("status", RUN_STATUSES), name="status"),
+        CheckConstraint(in_values("trigger_kind", WORKFLOW_TRIGGERS), name="trigger_kind"),
+        UniqueConstraint("workflow_id", "dedupe_key"),
+        Index("ix_automation_runs_org_created", "organization_id", "created_at"),
+        Index("ix_automation_runs_org_status", "organization_id", "status"),
+    )
+
+    organization_id: Mapped[uuid.UUID] = _org_fk()
+    workflow_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("automation_workflows.id", ondelete="CASCADE"))
+    workflow_name: Mapped[str] = mapped_column(String(120))
+    status: Mapped[str] = mapped_column(String(24))
+    trigger_kind: Mapped[str] = mapped_column(String(16))
+    trigger_label: Mapped[str] = mapped_column(String(255))
+    context: Mapped[dict[str, Any]] = mapped_column(default=dict)  # data-minimised trigger details
+    steps: Mapped[list[Any]] = mapped_column(default=list)  # [{type, title, risk, status, detail}]
+    requested_by: Mapped[uuid.UUID | None] = _user_fk()  # who pressed "Run now" (None = automatic)
+    decided_by: Mapped[uuid.UUID | None] = _user_fk()
+    decided_at: Mapped[datetime | None]
+    decision_comment: Mapped[str | None] = mapped_column(Text)
+    expires_at: Mapped[datetime | None]
+    dedupe_key: Mapped[str | None] = mapped_column(String(64))
+    error: Mapped[str | None] = mapped_column(Text)
+    is_simulated: Mapped[bool] = _simulated()
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    finished_at: Mapped[datetime | None]
+
+
+class WebhookDelivery(UUIDPrimaryKey, Base):
+    """Outbox row for one signed webhook call; the dispatcher sends it after the transaction commits."""
+
+    __tablename__ = "webhook_deliveries"
+    __table_args__ = (
+        CheckConstraint(in_values("status", DELIVERY_STATUSES), name="status"),
+        Index("ix_webhook_deliveries_due", "status", "next_attempt_at"),
+        Index("ix_webhook_deliveries_integration", "integration_id", "created_at"),
+    )
+
+    organization_id: Mapped[uuid.UUID] = _org_fk()
+    integration_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("integrations.id", ondelete="CASCADE"))
+    run_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("automation_runs.id", ondelete="SET NULL"))
+    event_type: Mapped[str] = mapped_column(String(64))
+    payload: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    next_attempt_at: Mapped[datetime | None]
+    last_status_code: Mapped[int | None] = mapped_column(Integer)
+    last_error: Mapped[str | None] = mapped_column(Text)
+    response_ms: Mapped[int | None] = mapped_column(Integer)
+    delivered_at: Mapped[datetime | None]
+    is_simulated: Mapped[bool] = _simulated()
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 
 class Report(UUIDPrimaryKey, Timestamps, Base):
@@ -660,5 +745,7 @@ TENANT_TABLES: tuple[str, ...] = (
     "approvals",
     "integrations",
     "automation_workflows",
+    "automation_runs",
+    "webhook_deliveries",
     "reports",
 )
