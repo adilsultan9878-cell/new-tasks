@@ -182,7 +182,7 @@ Run on v0.9.0 (2026-11-25). The automated parts run in CI on every push.
 | Tenant-isolation sweep | pytest | every organization route with another tenant's organization (404) and with its record IDs, after seeding one record of every kind and proving the IDs work for their owner | 0 leaks; the other tenant's data unchanged |
 | Token forgery | pytest | `alg: none`, wrong key, expired, wrong audience / issuer, unknown session, tampered signature, device credential as user token, user token as device credential, revoked session | all 401 |
 | API fuzzing | Schemathesis 4.34.2 (`scripts/fuzz_api.py`) | 121 operations, 8,582 generated requests (valid, boundary and invalid values) | first run found 3 server errors (below), all fixed; now 0 |
-| DAST | OWASP ZAP API scan (`scripts/dast_zap.py`, image `zaproxy/zap-stable`) | 100 paths / 137 URLs, authenticated, passive + active rules (SQL / NoSQL / command / template injection, XSS, path traversal, XXE, SSRF / cloud metadata, …) | 113-118 rules passed, **0 Medium or High**; one Low fixed, two Low reviewed (below) |
+| DAST | OWASP ZAP API scan (`scripts/dast_zap.py`, image `zaproxy/zap-stable`) | 100 paths / 137 URLs, authenticated, passive + active rules (SQL / NoSQL / command / template injection, XSS, path traversal, XXE, SSRF / cloud metadata, …) | 113-119 rules passed, **0 Medium or High**; one Low fixed, two Low reviewed (below) |
 | Dependency audit | pip-audit 2.10.1, `npm audit --omit=dev` | backend, agent and console runtime dependencies | 0 known vulnerabilities |
 | Load test | Locust (`perf/`) | 60 and 150 concurrent clients | found one concurrency 500 (below), fixed — see [PERFORMANCE.md](PERFORMANCE.md) |
 
