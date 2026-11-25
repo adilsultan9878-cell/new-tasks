@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
+import { MODULES } from '@/config/modules'
 import { OrgProvider } from '@/org/OrgContext'
 import { membership } from '@/test/utils'
 
@@ -24,10 +25,16 @@ function renderModule(key: string) {
 
 describe('ModulePage', () => {
   it('shows a planned module as a roadmap with no fake action buttons', () => {
-    renderModule('research')
-    expect(screen.getByRole('heading', { name: 'Research Lab' })).toBeInTheDocument()
-    expect(screen.getByText('Planned · Phase 9')).toBeInTheDocument()
-    expect(screen.queryAllByRole('button')).toHaveLength(0)
+    // Every real module is live now; a stand-in proves how future modules are presented.
+    MODULES.push({ ...MODULES[0]!, key: 'future-module', name: 'Future Module', status: 'planned', phase: 11, path: 'm/future-module' })
+    try {
+      renderModule('future-module')
+      expect(screen.getByRole('heading', { name: 'Future Module' })).toBeInTheDocument()
+      expect(screen.getByText('Planned · Phase 11')).toBeInTheDocument()
+      expect(screen.queryAllByRole('button')).toHaveLength(0)
+    } finally {
+      MODULES.pop()
+    }
   })
 
   it('returns not-found for unknown modules', () => {

@@ -50,6 +50,8 @@ export const qk = {
   runs: (orgId: string, limit: number) => ['automation', orgId, 'runs', limit] as const,
   webhooks: (orgId: string) => ['automation', orgId, 'webhooks'] as const,
   deliveries: (orgId: string) => ['automation', orgId, 'deliveries'] as const,
+  labDatasets: (orgId: string) => ['lab', orgId, 'datasets'] as const,
+  labExperiments: (orgId: string) => ['lab', orgId, 'experiments'] as const,
 }
 
 export function useMemberships(enabled = true) {

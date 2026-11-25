@@ -930,3 +930,70 @@ export interface AutomationCatalog {
   recipes: Recipe[]
   signature: { header: string; timestamp_header: string; algorithm: string; tolerance_seconds: number }
 }
+
+// --------------------------------------------------------------------------- research lab (Phase 9)
+export type LabField = 'category' | 'event_type' | 'severity' | 'title' | 'source' | 'device'
+export type LabOp = 'eq' | 'ne' | 'in' | 'contains' | 'not_contains' | 'startswith' | 'gte' | 'lte'
+
+export interface LabCondition {
+  field: LabField
+  op: LabOp
+  value: string | string[]
+}
+
+export interface LabRule {
+  mode: 'all' | 'any'
+  conditions: LabCondition[]
+  threshold: { count: number; within_minutes: number; per_device: boolean } | null
+}
+
+export interface LabDataset {
+  id: string
+  name: string
+  description: string | null
+  source: 'events' | 'upload'
+  params: Record<string, unknown>
+  row_count: number
+  label_counts: { malicious: number; benign: number; unlabelled: number }
+  sha256: string
+  includes_simulated: boolean
+  created_by_name: string | null
+  created_at: string
+  experiments: number
+}
+
+export interface LabScore {
+  fired: number
+  fired_unlabelled: number
+  confusion: { tp: number; fp: number; fn: number; tn: number }
+  precision: number | null
+  recall: number | null
+  f1: number | null
+  alerts_per_day: number
+}
+
+export interface LabExperiment {
+  id: string
+  dataset_id: string
+  dataset_name: string | null
+  name: string
+  rule: LabRule
+  rule_sha256: string
+  dataset_sha256: string
+  engine_version: string
+  results: LabScore & {
+    engine: string
+    rows: number
+    labelled: number
+    baseline: LabScore
+    samples: Record<'tp' | 'fp' | 'fn', { id: string; title: string; t: string }[]>
+  }
+  created_by_name: string | null
+  created_at: string
+}
+
+export interface LabReproduction {
+  reproduced: boolean
+  checks: Record<string, boolean>
+  engine_version: string
+}

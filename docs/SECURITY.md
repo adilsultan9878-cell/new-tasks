@@ -62,7 +62,7 @@ flowchart LR
 | | Supabase Data API exposure | migration revokes `anon`/`authenticated` privileges; identity tables additionally gated by `app.current_context` |
 | | verbose errors | uniform error envelope, stack traces only in server logs, request IDs for correlation |
 | | token theft via XSS | access token never persisted (memory only); refresh token unreadable by JS; strict CSP on the console (`script-src 'self'`) |
-| **D**enial of service | login floods, API floods | auth and global rate limits (in-process; Redis-backed for multi-instance is planned); request validation limits (lengths, pagination caps) |
+| **D**enial of service | login floods, API floods, huge bodies | auth and global rate limits (Redis-backed across instances when `REDIS_URL` is set); request body limits before parsing; validation limits (lengths, pagination caps) |
 | **E**levation of privilege | analyst adds themselves as owner | DB-backed RBAC on every route; nobody may assign or modify a role ranked above their own; last owner cannot be removed or demoted; tested |
 | | CSRF on cookie endpoints | `X-Requested-With` header requirement (forces CORS preflight), credentialed CORS restricted to configured origins, `SameSite` cookies |
 
@@ -79,7 +79,7 @@ flowchart LR
 | Supply chain | pinned dependency versions, lockfile (`npm ci`), CI lint + tests on every push | ✔ |
 | Email verification / password reset | requires an email provider | Phase 10 |
 | MFA (TOTP / WebAuthn) | | Planned (post Phase 5) |
-| Distributed rate limiting (Redis) | | Planned (scale-out) |
+| Distributed rate limiting (Redis) | `app/core/rate_limit.py` | ✅ Phase 9 |
 | Device authentication | per-device credentials over HTTPS, rotation, revocation | ✔ (Phase 2) |
 | Signed requests / mTLS for agents | defence in depth beyond TLS + bearer credential | Planned |
 | SSRF-safe fetchers for URL analysis | deny private/link-local ranges, size/time limits, no redirects to internal hosts | Phase 3 |
@@ -171,6 +171,48 @@ flowchart LR
 | Automation loops / storms | n8n records an event → alert → workflow → n8n → … | events caused by a running workflow never trigger workflows; schedules run once per slot |
 | Runaway automation during an incident | workflows keep acting while responders investigate | the emergency stop skips new runs, refuses approvals and holds deliveries |
 | Stale privileges | a removed admin's workflow keeps running with their rights | each step re-checks the owner's current membership and permissions |
+
+## Phase 9: security testing results
+
+Run on v0.9.0 (2026-11-25). The automated parts run in CI on every push.
+
+| Method | Tool | Scope | Result |
+|---|---|---|---|
+| Authentication sweep | pytest (`tests/test_security_sweep.py`) | every OpenAPI operation (126) without credentials | only health and logout answer 2xx; every user route answers 401 |
+| Tenant-isolation sweep | pytest | every organization route with another tenant's organization (404) and with its record IDs, after seeding one record of every kind and proving the IDs work for their owner | 0 leaks; the other tenant's data unchanged |
+| Token forgery | pytest | `alg: none`, wrong key, expired, wrong audience / issuer, unknown session, tampered signature, device credential as user token, user token as device credential, revoked session | all 401 |
+| API fuzzing | Schemathesis 4.34.2 (`scripts/fuzz_api.py`) | 121 operations, 8,582 generated requests (valid, boundary and invalid values) | first run found 3 server errors (below), all fixed; now 0 |
+| DAST | OWASP ZAP API scan (`scripts/dast_zap.py`, image `zaproxy/zap-stable`) | 100 paths / 137 URLs, authenticated, passive + active rules (SQL / NoSQL / command / template injection, XSS, path traversal, XXE, SSRF / cloud metadata, …) | 113 rules passed, **0 Medium or High**; 2 Low reviewed (below) |
+| Dependency audit | pip-audit 2.10.1, `npm audit --omit=dev` | backend, agent and console runtime dependencies | 0 known vulnerabilities |
+| Load test | Locust (`perf/`) | 60 and 150 concurrent clients | found one concurrency 500 (below), fixed — see [PERFORMANCE.md](PERFORMANCE.md) |
+
+**Fixed because of these tests**
+
+| Found by | Problem | Fix |
+|---|---|---|
+| Fuzzing | `offset=9223372036854775808` on two automation lists crashed the database driver (500) | every pagination offset is bounded (≤ 100,000) |
+| Fuzzing | `{"name": null}` on organization and sensor updates reached the database (500) | explicit `null` on a required field is a 422 (`no_nulls`) |
+| Review during this phase | no limit on request bodies: an anonymous client could send gigabytes to the login route | 1 MB default body limit enforced while streaming, sized limits on upload routes |
+| Load test | simultaneous organizations with the same name: one got a 500 | savepoint + retry on the unique slug |
+
+**Reviewed and accepted (Low)**
+
+* *Server error response* — `POST …/vulnerabilities/sync-kev` answers 502 in the scan environment
+  because outbound intelligence is switched off (`INTEL_OFFLINE`). Correct behaviour.
+* *Private IP disclosure* — a 422 for an invalid network scope repeats the private CIDR the
+  scanner itself submitted. Nothing that was not in the request is revealed.
+
+**Phase 9 hardening also added:** Redis-backed rate limits with hashed keys (no client addresses
+stored in Redis) and a per-instance fallback; a query-budget test against N+1 regressions.
+
+## Phase 9 additions: Research Lab
+
+| Threat | Example | Control (implemented, tested) |
+|---|---|---|
+| Code execution through rules | a "rule" that runs Python or a regex bomb | rules are data: a fixed set of fields and operators (no regex), ≤ 20 conditions, values ≤ 200 characters; nothing is evaluated as code |
+| Rigged results | editing a dataset after an experiment to improve its score | datasets and experiments are immutable (PostgreSQL trigger), pinned by SHA-256; `reproduce` re-checks hashes and results |
+| Lab affecting production | an experiment raising real alerts | the lab only reads its frozen copy; tested that events, alerts, incidents and actions stay unchanged |
+| Cross-tenant data | using another organization's dataset | RLS on both tables; covered by the tenant sweep |
 
 ## Reporting a vulnerability
 

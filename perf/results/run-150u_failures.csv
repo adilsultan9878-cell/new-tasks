@@ -1,0 +1,2 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,agent/heartbeat,RemoteDisconnected('Remote end closed connection without response'),1,2026-11-25T11:38:40Z,2026-11-25T11:38:40Z

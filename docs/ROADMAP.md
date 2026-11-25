@@ -144,9 +144,21 @@ published rules over the organization's own data. No AI model is used.
 | n8n kit: compose service, guide, Node.js signer/verifier cross-checked with the Python signer | ✅ | `integrations/n8n/` (`node --test`) |
 | Calling n8n's own API (listing or starting n8n workflows by id) | ⬜ | webhooks cover both directions today |
 
-## Phase 9 — Hardening & testing ⬜
+## Phase 9 — Hardening & testing ✅ (v0.9.0)
 
-- Load/performance tests, security testing (DAST), Redis rate limiting, Research Lab
+| Feature | Status | Evidence |
+|---|---|---|
+| Security sweep over every API operation: anonymous callers refused, other tenants get 404 and never a 2xx with foreign IDs (with a positive control), forged / expired / wrong-audience / device tokens rejected, headers and error hygiene | ✅ | `tests/test_security_sweep.py` |
+| API fuzzing (Schemathesis, 8,500+ generated requests): found 3 server errors, all fixed; in CI | ✅ | `scripts/fuzz_api.py`, `test_fuzzer_findings_stay_fixed` |
+| DAST (OWASP ZAP API scan, passive + active, 113 rules): 0 Medium/High; in CI | ✅ | `scripts/dast_zap.py`, [SECURITY.md](SECURITY.md#phase-9-security-testing-results) |
+| Dependency audits (pip-audit, npm audit) in CI | ✅ | CI |
+| Request body limits (1 MB default, sized limits on upload routes) | ✅ | `test_oversized_bodies_are_refused_before_they_are_read` |
+| Load tests (Locust: console users + agents) with measured results; found and fixed a concurrency 500 | ✅ | [PERFORMANCE.md](PERFORMANCE.md), `tests/test_concurrency.py` |
+| Query budgets: no N+1 on 18 list endpoints (found and fixed two) | ✅ | `tests/test_query_budget.py` |
+| Redis rate limiting shared by several API instances, hashed keys, per-instance fallback | ✅ | `tests/test_rate_limit_redis.py` (real Redis) |
+| Research Lab: frozen labelled datasets, data-only rule language, backtests vs. the built-in rules, reproducibility checks | ✅ | `tests/test_lab.py`, `LabPage.test.tsx`, e2e `lab.spec.ts` |
+| Promote a lab rule to live detection | ⬜ | the lab is deliberately read-only towards production today |
+| Realtime fan-out across several API instances (Redis pub/sub) | ⬜ | WebSocket delivery is per instance |
 
 ## Phase 10 — Deployment ⬜
 

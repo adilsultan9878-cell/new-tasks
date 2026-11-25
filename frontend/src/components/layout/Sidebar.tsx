@@ -90,12 +90,10 @@ export function Sidebar({ memberships, collapsed, onNavigate }: {
           )
         })}
       </div>
-      {planned > 0 && (
-        <div className={cn('border-t border-line p-3', collapsed && 'px-2')}>
-          <NavItem to={`${base}/roadmap`} label="What's next" icon={Sparkles} collapsed={collapsed} onNavigate={onNavigate}
-            trailing={<span className="rounded-full bg-violet/15 px-1.5 py-px text-[10.5px] font-medium text-[#c4b5fd]">{planned}</span>} />
-        </div>
-      )}
+      <div className={cn('border-t border-line p-3', collapsed && 'px-2')}>
+        <NavItem to={`${base}/roadmap`} label="What's next" icon={Sparkles} collapsed={collapsed} onNavigate={onNavigate}
+          trailing={planned > 0 ? <span className="rounded-full bg-violet/15 px-1.5 py-px text-[10.5px] font-medium text-[#c4b5fd]">{planned}</span> : undefined} />
+      </div>
     </nav>
   )
 }
