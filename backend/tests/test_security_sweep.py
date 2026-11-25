@@ -423,3 +423,29 @@ def test_fuzzer_findings_stay_fixed(fleet):
     )  # nullable column
     for path in ("/automation/runs", "/automation/deliveries", "/events", "/audit-logs"):
         assert fleet.owner.get(f"{o}{path}", params={"offset": 9223372036854775808}).status_code == 422
+
+
+def test_responses_made_outside_the_app_still_carry_security_headers(fleet):
+    """CORS preflights and early 413s never reach the app middleware (found by OWASP ZAP)."""
+    client = make_client()
+    origin = get_settings().cors_origins[0]
+    responses = {
+        "preflight": client.options(
+            f"{API}/auth/me", headers={"Origin": origin, "Access-Control-Request-Method": "GET"}
+        ),
+        "too large": client.post(
+            f"{API}/auth/login",
+            content=b"x" * (get_settings().max_request_bytes + 1),
+            headers={"Content-Type": "application/json"},
+        ),
+    }
+    assert responses["preflight"].status_code == 200 and responses["too large"].status_code == 413
+    for name, resp in responses.items():
+        for header in (
+            "Cross-Origin-Resource-Policy",
+            "X-Content-Type-Options",
+            "X-Frame-Options",
+            "Content-Security-Policy",
+        ):
+            assert header in resp.headers, (name, header)
+        assert resp.headers["Cache-Control"] == "no-store", name
