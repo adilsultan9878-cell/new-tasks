@@ -25,7 +25,8 @@ SECURITY_HEADERS = {
     "Referrer-Policy": "no-referrer",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     "Cross-Origin-Opener-Policy": "same-origin",
-    "Cross-Origin-Resource-Policy": "same-site",
+    # same-origin: only no-cors loads (img, script) are affected; the console uses CORS fetch.
+    "Cross-Origin-Resource-Policy": "same-origin",
     # The API only returns JSON; the interactive docs need inline assets, so they are excluded.
     "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
 }

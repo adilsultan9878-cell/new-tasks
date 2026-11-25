@@ -449,3 +449,4 @@ def test_responses_made_outside_the_app_still_carry_security_headers(fleet):
         ):
             assert header in resp.headers, (name, header)
         assert resp.headers["Cache-Control"] == "no-store", name
+        assert resp.headers["Cross-Origin-Resource-Policy"] == "same-origin", name  # ZAP 90004 wants same-origin

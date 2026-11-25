@@ -194,7 +194,7 @@ Run on v0.9.0 (2026-11-25). The automated parts run in CI on every push.
 | Fuzzing | `{"name": null}` on organization and sensor updates reached the database (500) | explicit `null` on a required field is a 422 (`no_nulls`) |
 | Review during this phase | no limit on request bodies: an anonymous client could send gigabytes to the login route | 1 MB default body limit enforced while streaming, sized limits on upload routes |
 | Load test | simultaneous organizations with the same name: one got a 500 | savepoint + retry on the unique slug |
-| DAST (CI run) | CORS preflight answers and early 413s came from middleware outside the application and missed the security headers (ZAP: *Cross-Origin-Resource-Policy missing*, Low) | an outermost ASGI layer adds the headers to every response; regression test |
+| DAST (CI run) | CORS preflight answers and early 413s came from middleware outside the application and missed the security headers (ZAP: *Cross-Origin-Resource-Policy missing*, Low) | an outermost ASGI layer adds the headers to every response, and `Cross-Origin-Resource-Policy` is now `same-origin` (ZAP treats `same-site` as weaker; only no-cors loads are affected and the console uses CORS fetch); regression test |
 
 **Reviewed and accepted (Low)**
 
