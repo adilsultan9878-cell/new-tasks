@@ -43,6 +43,7 @@ export const qk = {
   hubs: (orgId: string) => ['hubs', orgId] as const,
   cameras: (orgId: string) => ['cameras', orgId] as const,
   snapshots: (orgId: string, cameraId: string) => ['cameras', orgId, 'snapshots', cameraId] as const,
+  twin: (orgId: string, simulated: boolean) => ['twin', orgId, simulated] as const,
 }
 
 export function useMemberships(enabled = true) {

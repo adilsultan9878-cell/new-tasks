@@ -195,3 +195,34 @@ class SimulatorResult(APIModel):
     breaches: int
     detections: int
     actuators: dict[str, bool]
+
+
+# ---------------------------------------------------------------------- Digital Twin (Phase 7)
+FLOOR_W, FLOOR_D = 100.0, 60.0
+
+
+class TwinArea(BaseModel):
+    id: str | None = Field(default=None, max_length=64)
+    name: str = Field(min_length=1, max_length=60)
+    x: float = Field(ge=0, le=FLOOR_W)
+    y: float = Field(ge=0, le=FLOOR_D)
+    w: float = Field(gt=0, le=FLOOR_W)
+    h: float = Field(gt=0, le=FLOOR_D)
+
+    @model_validator(mode="after")
+    def _inside(self) -> TwinArea:
+        if self.x + self.w > FLOOR_W + 0.001 or self.y + self.h > FLOOR_D + 0.001:
+            raise ValueError("area must lie on the floor")
+        return self
+
+
+class TwinPosition(BaseModel):
+    device_id: uuid.UUID
+    x: float = Field(ge=0, le=FLOOR_W)
+    y: float = Field(ge=0, le=FLOOR_D)
+    area: str | None = Field(default=None, max_length=60)
+
+
+class TwinLayout(BaseModel):
+    areas: list[TwinArea] | None = Field(default=None, max_length=30)
+    positions: list[TwinPosition] = Field(default_factory=list, max_length=500)

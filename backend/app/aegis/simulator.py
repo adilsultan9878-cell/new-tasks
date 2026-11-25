@@ -63,8 +63,67 @@ def _hub(db: Session, org_id: uuid.UUID) -> Device:
     return hub
 
 
+# Simulated rooms and machines for the Digital Twin: name, (x, y, w, h) on the 100 x 60 m floor.
+SIM_AREAS = (
+    ("Server room", 4.0, 4.0, 30.0, 22.0),
+    ("Office", 40.0, 4.0, 56.0, 30.0),
+    ("Reception", 4.0, 34.0, 30.0, 22.0),
+)
+SIM_DEVICES = (
+    # name, type, ip, status, health, risk, (x, y), area
+    ("sim-db-01", "server", "10.20.0.11", "degraded", 54, 67, (12.0, 12.0), "Server room"),
+    ("sim-ws-07", "workstation", "10.20.0.57", "online", 92, 18, (60.0, 16.0), "Office"),
+    ("sim-nas-01", "server", "10.20.0.12", "offline", None, 31, (24.0, 16.0), "Server room"),
+)
+
+
+def _twin_layout(db: Session, org_id: uuid.UUID, hub: Device) -> None:
+    from app.models import Organization
+
+    org = db.get(Organization, org_id)
+    assert org is not None
+    twin = dict((org.settings or {}).get("twin") or {})
+    existing = list(twin.get("areas") or [])
+    if not any(a.get("simulated") for a in existing):
+        existing += [
+            {"id": str(uuid.uuid4()), "name": n, "x": x, "y": y, "w": w, "h": h, "simulated": True}
+            for n, x, y, w, h in SIM_AREAS
+        ]
+        org.settings = {**(org.settings or {}), "twin": {**twin, "areas": existing}}
+    for name, kind, ip, status_, health, risk, (x, y), area in SIM_DEVICES:
+        device = db.scalar(
+            select(Device).where(
+                Device.organization_id == org_id, Device.is_simulated.is_(True), Device.name == name
+            )
+        )
+        if device is None:
+            device = Device(
+                id=uuid.uuid4(),
+                organization_id=org_id,
+                name=name,
+                device_type=kind,
+                hostname=name,
+                os="simulator",
+                enrollment_status="enrolled",
+                credential_hash=None,
+                tags=["simulated"],
+                attributes={},
+                telemetry={},
+                config={},
+                is_simulated=True,
+            )
+            db.add(device)
+        device.ip_address, device.status, device.health_score, device.risk_score = ip, status_, health, risk
+        device.last_seen_at = now() if status_ != "offline" else now() - timedelta(hours=3)
+        device.location = {"x": x, "y": y, "area": area}
+    hub.ip_address = "10.20.0.40"
+    hub.location = {"x": 26.0, "y": 8.0, "area": "Server room"}
+    db.flush()
+
+
 def run(db: Session, request: Request, *, org_id: uuid.UUID, user: User) -> dict[str, Any]:
     hub = _hub(db, org_id)
+    _twin_layout(db, org_id, hub)
     rng = random.Random(42)  # noqa: S311 — deterministic demo data, not security-relevant
     start = now() - timedelta(hours=2)
     readings: list[dict[str, Any]] = []
@@ -158,6 +217,14 @@ def clear(db: Session, request: Request, *, org_id: uuid.UUID, user: User) -> di
             delete(Device).where(Device.organization_id == org_id, Device.is_simulated.is_(True))
         ).rowcount,
     }
+    from app.models import Organization
+
+    org = db.get(Organization, org_id)
+    if org is not None:
+        twin = dict((org.settings or {}).get("twin") or {})
+        if twin.get("areas"):
+            twin["areas"] = [a for a in twin["areas"] if not a.get("simulated")]
+            org.settings = {**(org.settings or {}), "twin": twin}
     audit.record(
         db,
         "simulator.clear",

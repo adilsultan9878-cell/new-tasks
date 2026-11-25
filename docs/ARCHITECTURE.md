@@ -108,7 +108,7 @@ sequenceDiagram
 | 7 | File & Hash Analyzer | NEXUS ZERO | 3 | **Live** |
 | 8 | Computer Vision Security | AEGIS ONE | 6 | **Live** |
 | 9 | IoT Device Security | AEGIS ONE | 6 | **Live** |
-| 10 | Digital Twin | AEGIS ONE | 7 | Designed |
+| 10 | Digital Twin | AEGIS ONE | 7 | **Live** |
 | 11 | Device Management | AEGIS ONE | 2 | **Live** |
 | 12 | Incident Response Center | SENTINEL X | 5 | **Live** |
 | 13 | Digital Forensics Lab | SENTINEL X | 5 | **Live** |
@@ -222,6 +222,17 @@ flowchart LR
 * The simulator creates a credential-less, `is_simulated` hub, sensors and camera that the Command
   Center ignores.
 
+## 6c. Digital Twin (implemented — Phase 7)
+
+`GET /organizations/{id}/twin` builds one read model from existing records — devices (status, health,
+Brain risk), open alerts and incidents per device (through the alert → event → device link),
+attached sensors and cameras, and /24 (/64) segments derived from device addresses. The layout is
+the only new data: rooms in `organizations.settings.twin.areas` and device coordinates in
+`devices.location`, written by `PUT …/twin/layout` (`devices:manage`, audited). The console renders
+it with Three.js in a lazily loaded chunk, and falls back to a room-by-room list when WebGL is
+unavailable. Devices that were never placed are lined up along the front of the floor and labelled
+"not placed".
+
 ## 7. Security Event Engine (implemented — Phase 2)
 
 ```mermaid
@@ -303,7 +314,7 @@ sentinel-x-aegis-nexus/
 │   │   ├── api/                 deps.py (auth, tenancy, RBAC) · v1/routes/*
 │   │   ├── core/                config · security · errors · logging · middleware · rate_limit
 │   │   ├── aegis/               AEGIS ONE: iot (readings, thresholds, actuators) · vision ·
-│   │   │                        simulator
+│   │   │                        simulator · twin (read model + layout)
 │   │   ├── soc/                 SOC: incidents · actions (allow-list, approvals, emergency stop) ·
 │   │   │                        evidence (SHA-256, custody) · reports
 │   │   ├── brain/               Security Brain: orchestrator · agents · toolbox (read-only) ·

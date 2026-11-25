@@ -59,7 +59,7 @@ export const MODULE_GROUPS: { key: ModuleGroupKey; label: string; caption: strin
 ]
 
 /** Highest phase that has shipped (drives the roadmap timeline). */
-export const COMPLETED_PHASE = 6
+export const COMPLETED_PHASE = 7
 
 export const PHASES: Record<number, string> = {
   1: 'Foundation',
@@ -175,10 +175,10 @@ export const MODULES: PlatformModule[] = [
     capabilities: ['Per-device credentials', 'Thresholds → alerts', 'LED and buzzer rules + manual switch', 'Simulator for hardware-free testing'],
   },
   {
-    key: 'twin', name: 'Digital Twin', group: 'aegis', icon: Box, status: 'planned', phase: 7,
-    path: 'm/twin',
-    summary: 'Interactive Three.js environment of enrolled devices, connections and live events.',
-    capabilities: ['3D site layout', 'Live device state', 'Incident locations', 'Simulated data clearly marked'],
+    key: 'twin', name: 'Digital Twin', group: 'aegis', icon: Box, status: 'live', phase: 7,
+    path: 'twin', permission: 'devices:read',
+    summary: 'A live 3D map of your site: devices with health and risk, open alerts and incidents, sensors and cameras, arranged room by room.',
+    capabilities: ['3D site layout (Three.js)', 'Live device, alert and incident state', 'Rooms and drag-to-place layout', 'Simulated data clearly marked'],
   },
   // Administration
   {

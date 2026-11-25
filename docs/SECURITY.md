@@ -150,6 +150,14 @@ flowchart LR
 | Fake data passed off as real | simulator readings in reports | `is_simulated` on every simulated record, labelled in the UI, excluded from metrics |
 | Weak TLS on microcontrollers | MicroPython does not verify certificates | documented; use trusted networks or the MQTT bridge (which verifies certificates) |
 
+## Phase 7 additions: Digital Twin
+
+| Threat | Example | Control (implemented, tested) |
+|---|---|---|
+| Layout tampering | a viewer moving devices or rooms | `PUT /twin/layout` needs `devices:manage` and is audited |
+| Hiding real data as "simulated" | a client marking a real room as simulator data so it disappears | the simulated flag is set by the server only |
+| Cross-tenant map data | positioning another organization's device | device lookups are scoped to the caller's organization (404), RLS underneath |
+
 ## Reporting a vulnerability
 
 Please do not open public issues for security problems. Email the maintainer privately with steps

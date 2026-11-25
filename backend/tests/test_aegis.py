@@ -206,7 +206,7 @@ def test_simulator_is_labelled_excluded_from_metrics_and_clearable(fleet):
     assert (
         cleared["sensors"] == 3
         and cleared["cameras"] == 1
-        and cleared["devices"] == 1
+        and cleared["devices"] == 4
         and cleared["alerts"] >= 2
     )
     assert fleet.owner.get(_org(fleet, "/sensors")).json() == []
