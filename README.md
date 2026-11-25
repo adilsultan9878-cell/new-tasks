@@ -18,9 +18,9 @@ and **human-approved** automated defense. It is built phase by phase. Every feat
 is implemented end to end and covered by automated tests. Nothing in the UI is a mock or a fake
 counter.
 
-> **Status: Phase 7 (Digital Twin) complete — v0.7.0.** Phases 1-6 shipped in v0.1.0-v0.6.0;
-> Phase 8 (Automation) is next. Only working modules are in the sidebar; everything planned is on
-> the "What's next" page. See [docs/ROADMAP.md](docs/ROADMAP.md) for the full list.
+> **Status: Phase 8 (Automation) complete — v0.8.0.** Phases 1-7 shipped in v0.1.0-v0.7.0;
+> Phase 9 (Hardening & testing) is next. Only working modules are in the sidebar; everything
+> planned is on the "What's next" page. See [docs/ROADMAP.md](docs/ROADMAP.md) for the full list.
 
 ## What works today
 
@@ -51,6 +51,7 @@ counter.
 | 📟 **IoT Security** | ESP32 / Arduino boards report sensors (directly, or through a local MQTT broker and the agent's bridge). Out-of-range readings raise alerts and can switch the board's LED or buzzer on; you can also switch them for a while by hand. A MicroPython firmware is included, and a clearly labelled **simulator** lets you try everything without hardware. |
 | 📷 **Computer Vision** | The agent watches a camera with OpenCV and reports motion, people and people inside the restricted zones you draw — video stays on your computer and nothing identifies anyone. Detection starts off; snapshots are opt-in, blurred and expire. |
 | 🧊 **Digital Twin** | A live 3D map of your site (Three.js): devices coloured by status and as tall as their risk, pulsing rings for open alerts, a red beacon for open incidents, sensors and cameras around their board, and network segments. Draw rooms, drag devices into place, or switch to a simple room-by-room list. |
+| ⚙️ **Automation** | Workflows from ready recipes: tell the team about serious alerts, send alerts or a daily summary to n8n (Slack, Teams, email), open incidents for critical alerts, let n8n propose blocks. Signed webhooks both ways (HMAC, timestamps, replay protection, SSRF guard, retries). Anything that changes your defences waits for an approver; the emergency stop pauses everything. Guide: [integrations/n8n](integrations/n8n/README.md). |
 | 🗺️ **Roadmap pages** | Modules that are not built yet show what they will do and which phase delivers them. They contain no fake buttons. |
 
 ## Architecture at a glance
@@ -139,11 +140,11 @@ The Threat Intelligence page shows which sources are configured.
 
 | Suite | Command | Covers |
 |---|---|---|
-| Backend (SQLite) | `cd backend; pytest` | health, auth, organizations, RBAC, tenant isolation, enrollment, device auth, ingestion, detection rules, sweeper, WebSocket, real agent ↔ live server, investigations (URL/domain/IP/hash/email), SSRF guard, KEV/NVD, scopes, Nmap import, Security Brain agents, scoring and read-only guards, incidents, approvals, emergency stop, evidence and reports, IoT hubs, actuators, vision privacy, simulator, live bridge/camera protocol, digital twin (135 tests) |
-| Backend (PostgreSQL + RLS) | `$env:TEST_DATABASE_URL="postgresql://postgres:<pw>@localhost:5432/postgres"; pytest` | everything above, run as the least-privileged DB role, plus RLS proofs for every tenant table and evidence immutability triggers (143 tests) |
+| Backend (SQLite) | `cd backend; pytest` | health, auth, organizations, RBAC, tenant isolation, enrollment, device auth, ingestion, detection rules, sweeper, WebSocket, real agent ↔ live server, investigations (URL/domain/IP/hash/email), SSRF guard, KEV/NVD, scopes, Nmap import, Security Brain agents, scoring and read-only guards, incidents, approvals, emergency stop, evidence and reports, IoT hubs, actuators, vision privacy, simulator, live bridge/camera protocol, digital twin, automation: approval gates, signed webhooks in and out, SSRF guard, retries, loop guard, schedules (152 tests) |
+| Backend (PostgreSQL + RLS) | `$env:TEST_DATABASE_URL="postgresql://postgres:<pw>@localhost:5432/postgres"; pytest` | everything above, run as the least-privileged DB role, plus RLS proofs for every tenant table and evidence immutability triggers (160 tests) |
 | Agent | `cd agent; python -m pytest` | config allow-list, no-command-execution guard, collectors, detectors, offline spool, revocation, OpenCV camera monitor, MQTT bridge, ESP32 firmware with fake hardware (29 tests; CI runs them on Linux **and Windows**) |
-| Frontend unit/component | `cd frontend; npm test` | API client, session refresh, sidebar RBAC, dashboard, devices, events, live WebSocket client, Pages proxy, investigation view, Security Brain, roadmap, SOC, IoT, vision and digital twin pages (40 tests) |
-| End-to-end (Playwright) | `cd frontend; npx playwright install chromium; npx playwright test` | sign-up → org → dashboard → sign-in again; tenant isolation and RBAC; **real agent enrolled from the console, shown live, then revoked**; high-severity report → alert toast; phishing analysis → alert; Nmap import respects scopes; new alert auto-triaged by the Security Brain, organization analysis and report download; alert → incident → approved block → evidence → report, and the emergency stop; simulator → sensors, outputs, camera zone; 3D twin renders, list view, rooms saved (13 tests, intel providers offline for determinism) |
+| Frontend unit/component | `cd frontend; npm test` | API client, session refresh, sidebar RBAC, dashboard, devices, events, live WebSocket client, Pages proxy, investigation view, Security Brain, roadmap, SOC, IoT, vision, digital twin and automation pages (44 tests) |
+| End-to-end (Playwright) | `cd frontend; npx playwright install chromium; npx playwright test` | sign-up → org → dashboard → sign-in again; tenant isolation and RBAC; **real agent enrolled from the console, shown live, then revoked**; high-severity report → alert toast; phishing analysis → alert; Nmap import respects scopes; new alert auto-triaged by the Security Brain, organization analysis and report download; alert → incident → approved block → evidence → report, and the emergency stop; simulator → sensors, outputs, camera zone; 3D twin renders, list view, rooms saved; webhook secret shown once, signed test delivery verified by a local receiver, recipe workflows, alert forwarded, incident approved (14 tests, intel providers offline for determinism) |
 | Lint / types | `ruff check .` · `npm run lint` · `npm run typecheck` | |
 
 CI runs all of the above on every push ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
@@ -154,6 +155,7 @@ CI runs all of the above on every push ([.github/workflows/ci.yml](.github/workf
 backend/    FastAPI service: app/ (api, core, db, models, rbac, schemas, services), alembic/, tests/
 agent/      Python local security agent (sentinel-agent CLI), tests, service files
 frontend/   React console: src/ (auth, org, components, pages, config/modules.ts), e2e/, functions/
+integrations/n8n/  n8n guide and Node.js signature kit
 docker/     Postgres init (creates the RLS-enforcing app role)
 docs/       Architecture, database, security/threat model, deployment, roadmap
 ```

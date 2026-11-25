@@ -59,7 +59,7 @@ export const MODULE_GROUPS: { key: ModuleGroupKey; label: string; caption: strin
 ]
 
 /** Highest phase that has shipped (drives the roadmap timeline). */
-export const COMPLETED_PHASE = 7
+export const COMPLETED_PHASE = 8
 
 export const PHASES: Record<number, string> = {
   1: 'Foundation',
@@ -144,10 +144,10 @@ export const MODULES: PlatformModule[] = [
     capabilities: ['Files, notes and external hashes', 'Browser + server hashing', 'Verify and download with custody records', 'Immutable in the database'],
   },
   {
-    key: 'automation', name: 'Workflow Automation', navName: 'Automation', group: 'sentinel', icon: Workflow, status: 'planned', phase: 8,
-    path: 'm/automation',
-    summary: 'Approved n8n workflows triggered by events, schedules or webhooks — with approval requirements per workflow.',
-    capabilities: ['n8n integration', 'Signed webhooks', 'Scheduled & event triggers'],
+    key: 'automation', name: 'Workflow Automation', navName: 'Automation', group: 'sentinel', icon: Workflow, status: 'live', phase: 8,
+    path: 'automation', permission: 'automation:read',
+    summary: 'Workflows that tell the team, send alerts to n8n or chat, and prepare incidents and blocks — anything that changes your defences waits for an approver.',
+    capabilities: ['Event, schedule, manual and signed-webhook triggers', 'Signed outgoing webhooks (n8n, Slack, Teams)', 'Approval gates and full run history'],
   },
   {
     key: 'reports', name: 'Reports & Analytics', navName: 'Reports', group: 'sentinel', icon: ChartColumn, status: 'live', phase: 5,

@@ -83,6 +83,14 @@ export function RealtimeProvider({ orgId, children }: { orgId: string; children:
           void queryClient.invalidateQueries({ queryKey: ['response', orgId] })
           push({ tone: 'critical', title: d.engaged ? 'Emergency stop engaged' : 'Emergency stop released', body: d.engaged ? 'All response actions are on hold.' : 'Response actions can run again.' })
           break
+        case 'automation.run':
+          void queryClient.invalidateQueries({ queryKey: ['automation', orgId] })
+          void queryClient.invalidateQueries({ queryKey: qk.notifications })
+          if (d.status === 'awaiting_approval') push({ tone: 'info', title: 'Workflow waiting for approval', body: String(d.workflow_name ?? '') })
+          break
+        case 'automation.delivery':
+          void queryClient.invalidateQueries({ queryKey: ['automation', orgId] })
+          break
         case 'report.created':
           void queryClient.invalidateQueries({ queryKey: ['reports', orgId] })
           break

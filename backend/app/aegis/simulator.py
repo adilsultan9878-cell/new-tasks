@@ -18,7 +18,18 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.aegis import iot, vision
-from app.models import AgentRun, Alert, Camera, Device, SecurityEvent, Sensor, SensorReading, User
+from app.models import (
+    AgentRun,
+    Alert,
+    AutomationRun,
+    Camera,
+    Device,
+    SecurityEvent,
+    Sensor,
+    SensorReading,
+    User,
+    WebhookDelivery,
+)
 from app.services import audit, realtime
 from app.soc.common import now
 
@@ -215,6 +226,17 @@ def clear(db: Session, request: Request, *, org_id: uuid.UUID, user: User) -> di
         ).rowcount,
         "devices": db.execute(
             delete(Device).where(Device.organization_id == org_id, Device.is_simulated.is_(True))
+        ).rowcount,
+        # Automation that a simulated alert started (only when a workflow opted in to simulator data).
+        "webhook_deliveries": db.execute(
+            delete(WebhookDelivery).where(
+                WebhookDelivery.organization_id == org_id, WebhookDelivery.is_simulated.is_(True)
+            )
+        ).rowcount,
+        "automation_runs": db.execute(
+            delete(AutomationRun).where(
+                AutomationRun.organization_id == org_id, AutomationRun.is_simulated.is_(True)
+            )
         ).rowcount,
     }
     from app.models import Organization

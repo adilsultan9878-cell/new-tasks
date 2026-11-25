@@ -113,6 +113,20 @@ class Settings(BaseSettings):
     camera_snapshot_max_bytes: int = Field(default=1_000_000, ge=10_000, le=5_000_000)
     vision_event_cooldown_seconds: int = Field(default=30, ge=0, le=3600)  # dedup window per camera/type
 
+    # --- Automation: workflows and signed webhooks (Phase 8) ----------------------------------
+    # Master key for webhook signing secrets (each secret = HMAC(key, object id, version), never
+    # stored). Unset: derived from JWT_SECRET; in development without JWT_SECRET it changes on restart.
+    automation_signing_key: str = Field(default="", repr=False)
+    # Outgoing webhooks may only reach public addresses. Set true for a local n8n (docker, LAN).
+    automation_allow_private_targets: bool = False
+    automation_delivery_enabled: bool = True  # false = deliveries stay queued (air-gapped labs)
+    automation_tick_seconds: int = Field(default=5, ge=1, le=300)  # schedules, retries, expiry
+    webhook_timeout_seconds: float = Field(default=10.0, gt=0, le=30)
+    webhook_max_attempts: int = Field(default=6, ge=1, le=12)
+    inbound_hook_max_bytes: int = Field(default=65_536, ge=1_024, le=1_000_000)
+    rate_limit_hooks_per_minute: int = 60  # per incoming-hook workflow and client address
+    signature_tolerance_seconds: int = Field(default=300, ge=30, le=3600)  # replay window
+
     # --- Realtime ----------------------------------------------------------------------------
     ws_auth_timeout_seconds: int = 10
     ws_ping_interval_seconds: int = 25
@@ -141,6 +155,8 @@ class Settings(BaseSettings):
                 raise ValueError("SQLite is for local development only; set a PostgreSQL DATABASE_URL")
             if not self.refresh_cookie_secure:
                 raise ValueError("REFRESH_COOKIE_SECURE must be true in production")
+            if self.automation_signing_key and len(self.automation_signing_key) < 32:
+                raise ValueError("AUTOMATION_SIGNING_KEY must be at least 32 characters")
             if "*" in self.cors_origins:
                 raise ValueError("Wildcard CORS origins are not allowed with credentialed requests")
         if self.refresh_cookie_samesite == "none" and not self.refresh_cookie_secure:

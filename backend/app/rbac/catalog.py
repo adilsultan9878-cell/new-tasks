@@ -34,6 +34,7 @@ PERMISSIONS: dict[str, str] = {
     "network:manage": "Manage authorized scopes and import network scans",
     "brain:read": "View Security Brain analyses, agent decisions and reports",
     "brain:run": "Run Security Brain analyses",
+    "automation:read": "View workflows, webhooks and automation history",
 }
 
 _READ = [p for p in PERMISSIONS if p.endswith(":read")]

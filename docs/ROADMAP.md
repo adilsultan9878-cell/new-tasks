@@ -130,9 +130,19 @@ published rules over the organization's own data. No AI model is used.
 | Simulator furnishes a labelled example site (three rooms, four machines) | ✅ | `test_simulator_furnishes_the_twin_and_clearing_keeps_real_areas` |
 | Multiple floors / imported floor plans (images, CAD) | ⬜ | one floor per organization today |
 
-## Phase 8 — Automation ⬜
+## Phase 8 — Automation ✅ (v0.8.0)
 
-- n8n integration, signed webhooks, scheduled and event-triggered workflows with approval gates
+| Feature | Status | Evidence |
+|---|---|---|
+| Workflows from an allow-list: triggers (new alert, incident opened, device offline, approval needed, schedule, manual, signed incoming webhook) and steps (notify, send to webhook, open incident, propose a block or heightened monitoring, record an event) | ✅ | `tests/test_automation.py::test_definitions_are_validated_against_the_allow_list` |
+| Approval gates: medium-risk steps always wait; requesters cannot approve their own runs unless sole approver (recorded); approvals expire | ✅ | `test_medium_steps_always_wait_for_an_approver`, `test_manual_run_needs_a_second_person_unless_sole_approver`, `test_pending_runs_expire` |
+| Signed outgoing webhooks: HMAC-SHA256 with timestamp, derived (never stored) secrets with rotation, outbox + worker, retries with back-off, no redirects, SSRF guard on every attempt, data-minimised payloads | ✅ | `test_alert_workflow_notifies_and_sends_a_signed_minimal_webhook`, `test_deliveries_retry_transient_errors_and_give_up`, `test_targets_refuse_internal_addresses_and_plain_http` |
+| Signed incoming hooks: time window, replay protection, size and rate limits; can only record events or *propose* blocks | ✅ | `test_incoming_hook_is_signed_replay_safe_and_only_proposes` |
+| Safety rails: automation never starts automation; the emergency stop pauses runs, approvals and deliveries; removed owners stop permissioned steps | ✅ | `test_imported_events_raise_alerts_but_never_start_more_automation`, `test_emergency_stop_pauses_runs_approvals_and_deliveries`, `test_removed_owner_stops_permissioned_steps` |
+| Schedules run once per slot (multi-instance safe) with real counts, simulator data excluded | ✅ | `test_schedules_run_once_per_slot_with_real_counts` |
+| Automation console: recipes, three-part builder, workflow cards, approvals and run history, webhooks with test send, deliveries and retry | ✅ | `AutomationPage.test.tsx`, e2e `automation.spec.ts` (real signed delivery verified by a local receiver) |
+| n8n kit: compose service, guide, Node.js signer/verifier cross-checked with the Python signer | ✅ | `integrations/n8n/` (`node --test`) |
+| Calling n8n's own API (listing or starting n8n workflows by id) | ⬜ | webhooks cover both directions today |
 
 ## Phase 9 — Hardening & testing ⬜
 

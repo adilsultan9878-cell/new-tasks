@@ -5,6 +5,7 @@ from app.api.v1.routes import (
     agent,
     audit,
     auth,
+    automation,
     brain,
     dashboard,
     devices,
@@ -34,3 +35,5 @@ api_router.include_router(network.router)
 api_router.include_router(brain.router)
 api_router.include_router(soc.router)
 api_router.include_router(aegis.router)
+api_router.include_router(automation.router)
+api_router.include_router(automation.hooks_router)

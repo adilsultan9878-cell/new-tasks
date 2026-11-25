@@ -81,6 +81,8 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: n8n signature kit (Node.js, cross-checked with the Python signer)
+        run: node --test ../integrations/n8n/sentinel-signature.test.js
 
   e2e:
     name: End-to-end (Playwright)

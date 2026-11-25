@@ -30,6 +30,9 @@ services:
       DATABASE_URL: postgresql://sentinel_app:${SENTINEL_APP_DB_PASSWORD:-sentinel_app_dev_password}@db:5432/sentinel
       MIGRATION_DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres_dev_password}@db:5432/sentinel
       JWT_SECRET: ${JWT_SECRET:-}
+      AUTOMATION_SIGNING_KEY: ${AUTOMATION_SIGNING_KEY:-}
+      # Local stack only: lets webhooks reach the n8n container (http://n8n:5678). Keep false in production.
+      AUTOMATION_ALLOW_PRIVATE_TARGETS: ${AUTOMATION_ALLOW_PRIVATE_TARGETS:-true}
       CORS_ORIGINS: http://localhost:8080,http://localhost:5173
       RUN_MIGRATIONS_ON_START: "true"
       # Only nginx (inside this compose network) sits in front of the API.
@@ -47,6 +50,24 @@ services:
     ports:
       - "127.0.0.1:8080:80"
 
+  # Optional local n8n for automation: docker compose --profile automation up -d n8n
+  # Open http://localhost:5678, create the owner account, then follow integrations/n8n/README.md.
+  n8n:
+    image: n8nio/n8n:2.49.6
+    profiles: ["automation"]
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: "5678"
+      WEBHOOK_URL: http://n8n:5678/
+      GENERIC_TIMEZONE: UTC
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      NODE_FUNCTION_ALLOW_BUILTIN: crypto # Code nodes may verify SENTINEL X signatures
+    ports:
+      - "127.0.0.1:5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    restart: unless-stopped
+
   # Optional local MQTT broker for sensor boards: docker compose --profile iot up -d mosquitto
   mosquitto:
     image: eclipse-mosquitto:2
@@ -60,3 +81,4 @@ services:
 
 volumes:
   pgdata:
+  n8n_data:

@@ -158,6 +158,20 @@ flowchart LR
 | Hiding real data as "simulated" | a client marking a real room as simulator data so it disappears | the simulated flag is set by the server only |
 | Cross-tenant map data | positioning another organization's device | device lookups are scoped to the caller's organization (404), RLS underneath |
 
+## Phase 8 additions: Automation and webhooks
+
+| Threat | Example | Control (implemented, tested) |
+|---|---|---|
+| Automation acting without a human | a workflow opening incidents or blocking on its own | allow-listed steps only; medium-risk steps always need an approver; blocks are only *proposed* to the SOC queue (Phase 5 approval rules); approvals expire |
+| Self-approval | a member starts a run and approves it | refused unless they are the only approver; self-approval is recorded |
+| Forged or replayed incoming hooks | an attacker posting to the hook URL | HMAC-SHA256 over timestamp + raw body, constant-time compare, ±5 min window, one-time use per signature, 64 KB limit, per-hook rate limit; 404 for unknown hooks |
+| SSRF through outgoing webhooks | a webhook pointing at `169.254.169.254` or an internal admin page | `https` only, no credentials in URLs, DNS answers must be public (checked on save *and* before every attempt), redirects never followed; private targets only with `AUTOMATION_ALLOW_PRIVATE_TARGETS=true` |
+| Secret disclosure | a database copy or an audit export revealing webhook secrets | secrets are derived from `AUTOMATION_SIGNING_KEY` and never stored or logged; shown once; rotation invalidates the old one; URLs (which often embed tokens) are masked for read-only members |
+| Data leaving the platform | raw event payloads with credentials posted to chat | payloads carry titles, severities, names and links only (tested: a `password` in raw event data is not sent) |
+| Automation loops / storms | n8n records an event → alert → workflow → n8n → … | events caused by a running workflow never trigger workflows; schedules run once per slot |
+| Runaway automation during an incident | workflows keep acting while responders investigate | the emergency stop skips new runs, refuses approvals and holds deliveries |
+| Stale privileges | a removed admin's workflow keeps running with their rights | each step re-checks the owner's current membership and permissions |
+
 ## Reporting a vulnerability
 
 Please do not open public issues for security problems. Email the maintainer privately with steps

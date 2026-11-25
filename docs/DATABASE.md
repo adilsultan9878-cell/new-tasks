@@ -131,8 +131,10 @@ erDiagram
 | AI | `agent_runs`, `agent_decisions` | every Security Brain run (subject, weighted factors, coverage, tool trace, report) and each decision, flagged `is_ai_generated` | ✔ |
 | Response | `response_actions` | proposed/approved/executed actions + rollback plan | ✔ |
 | | `approvals` | human approval records | ✔ |
-| Automation | `integrations` | external integrations (non-secret config + `secret_ref`) | ✔ |
-| | `automation_workflows` | n8n / webhook / schedule workflows | ✔ |
+| Automation | `integrations` | outgoing webhook destinations (URL, health; the signing secret is derived, never stored) | ✔ |
+| | `automation_workflows` | allow-listed trigger + steps, approval flag, schedule, inbound secret version | ✔ |
+| | `automation_runs` | every run: trigger context, step results, approval decision | ✔ |
+| | `webhook_deliveries` | outbox of signed webhook calls with attempts and results | ✔ |
 | Reporting | `reports` | generated reports, AI sections flagged | ✔ |
 
 ## Row-Level Security
@@ -196,6 +198,7 @@ applied through Supabase's SQL Editor when there is no direct connection.
 | `0002` | device enrollment tokens and event-ingestion columns |
 | `0003` | network scopes, investigation timeline/details, intel and network permissions |
 | `0004` | pinned `search_path` on the RLS helper and audit trigger functions |
+| `0008` | Automation: `automation_runs` and `webhook_deliveries` (RLS), workflow steps / inbound secret version / next run / last status, integration secret version / failure count / last error, status and trigger CHECKs, `automation:read` permission |
 | — | Phase 7 (Digital Twin) needs no migration: rooms live in `organizations.settings`, positions in `devices.location` |
 | `0007` | AEGIS ONE: `sensor_readings` and `camera_snapshots` (RLS), sensor key / actuator rules / breach state, camera key / blur / last event, retention bounds |
 | `0006` | SOC: `incidents.timeline` and unique reference, `alerts.acknowledged_at`, response action title/reason/reversible and allow-listed type, evidence title/filename/content type, `evidence_blobs` (RLS), immutability triggers |

@@ -9,6 +9,7 @@ import { ToastProvider } from '@/realtime/Toaster'
 import { IotPage } from '@/pages/aegis/IotPage'
 import { VisionPage } from '@/pages/aegis/VisionPage'
 import { TwinPage } from '@/pages/twin/TwinPage'
+import { AutomationPage } from '@/pages/automation/AutomationPage'
 import { AuditLogPage } from '@/pages/audit/AuditLogPage'
 import { AgentCenterPage } from '@/pages/brain/AgentCenterPage'
 import { BrainPage } from '@/pages/brain/BrainPage'
@@ -81,6 +82,7 @@ export const routes = [
           { path: 'vision', element: <VisionPage /> },
           { path: 'iot', element: <IotPage /> },
           { path: 'twin', element: <TwinPage /> },
+          { path: 'automation', element: <AutomationPage /> },
           { path: 'reports', element: <ReportsPage /> },
           { path: 'reports/:reportId', element: <ReportPage /> },
           { path: 'organization', element: <OrganizationPage /> },
