@@ -24,9 +24,9 @@ function renderModule(key: string) {
 
 describe('ModulePage', () => {
   it('shows a planned module as a roadmap with no fake action buttons', () => {
-    renderModule('automation')
-    expect(screen.getByRole('heading', { name: 'Workflow Automation' })).toBeInTheDocument()
-    expect(screen.getByText('Planned · Phase 8')).toBeInTheDocument()
+    renderModule('research')
+    expect(screen.getByRole('heading', { name: 'Research Lab' })).toBeInTheDocument()
+    expect(screen.getByText('Planned · Phase 9')).toBeInTheDocument()
     expect(screen.queryAllByRole('button')).toHaveLength(0)
   })
 

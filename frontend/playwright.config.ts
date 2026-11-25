@@ -34,6 +34,9 @@ export default defineConfig({
         RATE_LIMIT_DEFAULT_PER_MINUTE: '3000',
         // Deterministic CI: no calls to third-party intelligence services.
         INTEL_OFFLINE: 'true',
+        // The automation test runs its own webhook receiver on 127.0.0.1.
+        AUTOMATION_ALLOW_PRIVATE_TARGETS: 'true',
+        AUTOMATION_TICK_SECONDS: '2',
       },
       timeout: 60_000,
     },

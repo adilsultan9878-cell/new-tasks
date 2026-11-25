@@ -33,7 +33,7 @@ flowchart LR
     cams[Enrolled cameras] -. "Phase 6: OpenCV worker" .-> api
     api -. "Phase 3: read-only lookups" .-> intel[NVD · CISA KEV · public TI feeds]
     api -. "Phase 4: pluggable" .-> llm[Ollama / hosted LLM]
-    api -. "Phase 8: signed webhooks" .-> n8n[n8n workflows]
+    api <-->|"signed webhooks (HMAC)"| n8n[n8n / chat / ticketing]
 ```
 
 ## 3. Runtime components (implemented)
@@ -113,7 +113,7 @@ sequenceDiagram
 | 12 | Incident Response Center | SENTINEL X | 5 | **Live** |
 | 13 | Digital Forensics Lab | SENTINEL X | 5 | **Live** |
 | 14 | Agent Center | SENTINEL X | 4 | **Live** |
-| 15 | Workflow Automation | SENTINEL X | 8 | Designed |
+| 15 | Workflow Automation | SENTINEL X | 8 | **Live** |
 | 16 | Reports & Analytics | SENTINEL X | 5 | **Live** |
 | 17 | Organization Management | Admin | 1 | **Live** |
 | 18 | User & Role Management | Admin | 1 | **Live** |
@@ -233,6 +233,37 @@ it with Three.js in a lazily loaded chunk, and falls back to a room-by-room list
 unavailable. Devices that were never placed are lined up along the front of the floor and labelled
 "not placed".
 
+## 6d. Automation (implemented — Phase 8)
+
+A workflow is *one trigger + up to ten steps*, both chosen from allow-lists in
+`app/automation/catalog.py`; definitions are validated on save (step ↔ trigger compatibility,
+webhooks of the same organization only).
+
+```mermaid
+flowchart LR
+    ev[alert · incident · device offline · approval needed] --> emit
+    sch[schedule worker] --> start
+    man[Run now] --> start
+    hook[signed incoming hook<br/>time window · replay · size · rate] --> start
+    emit{matching enabled workflows<br/>not while a workflow runs} --> start[start_run]
+    start -->|emergency stop| skipped[skipped]
+    start -->|medium step or approval on| wait[awaiting approval<br/>expires] -->|approver| exec
+    start -->|low steps only| exec[execute steps<br/>savepoint each · as owner · perms re-checked]
+    exec --> soc[SOC proposals · incidents · events · notifications]
+    exec --> outbox[(webhook_deliveries)] --> worker[worker: SSRF check · HMAC · retries] --> ext[n8n / Slack / Teams]
+```
+
+* **Runs** (`automation_runs`) keep the data-minimised trigger context, every step's result and
+  the approval decision. They act as the workflow owner (or the person who pressed Run); saving a
+  workflow takes ownership.
+* **Outgoing webhooks** are an outbox: steps only queue rows inside the run's transaction; the
+  automation worker (lifespan task, every `AUTOMATION_TICK_SECONDS`) sends them after commit, so
+  rolled-back work never leaves the platform.
+* **Secrets** are derived: `HMAC(AUTOMATION_SIGNING_KEY, kind:id:version)`. The database holds only
+  the version; rotation bumps it.
+* **Loop guard:** a context flag marks code running inside a workflow; events it causes do not
+  trigger workflows, so SENTINEL X and n8n cannot ping-pong.
+
 ## 7. Security Event Engine (implemented — Phase 2)
 
 ```mermaid
@@ -315,6 +346,7 @@ sentinel-x-aegis-nexus/
 │   │   ├── core/                config · security · errors · logging · middleware · rate_limit
 │   │   ├── aegis/               AEGIS ONE: iot (readings, thresholds, actuators) · vision ·
 │   │   │                        simulator · twin (read model + layout)
+│   │   ├── automation/          workflows: catalog · engine · signing · targets (SSRF) · delivery · worker
 │   │   ├── soc/                 SOC: incidents · actions (allow-list, approvals, emergency stop) ·
 │   │   │                        evidence (SHA-256, custody) · reports
 │   │   ├── brain/               Security Brain: orchestrator · agents · toolbox (read-only) ·
@@ -346,6 +378,7 @@ sentinel-x-aegis-nexus/
 │   └── Dockerfile · nginx.conf
 ├── agent/                       Python local security agent (sentinel-agent CLI: agent, camera, mqtt-bridge) + tests
 ├── firmware/micropython/        ESP32 sensor hub
+├── integrations/n8n/           n8n guide + Node.js signature kit (tested against the Python signer)
 ├── docker/postgres/             init script for the least-privileged DB role
 ├── docs/                        architecture · database · security · deployment · roadmap
 ├── docker-compose.yml · render.yaml

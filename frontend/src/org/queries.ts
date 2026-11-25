@@ -44,6 +44,12 @@ export const qk = {
   cameras: (orgId: string) => ['cameras', orgId] as const,
   snapshots: (orgId: string, cameraId: string) => ['cameras', orgId, 'snapshots', cameraId] as const,
   twin: (orgId: string, simulated: boolean) => ['twin', orgId, simulated] as const,
+  automationOverview: (orgId: string) => ['automation', orgId, 'overview'] as const,
+  automationCatalog: (orgId: string) => ['automation', orgId, 'catalog'] as const,
+  workflows: (orgId: string) => ['automation', orgId, 'workflows'] as const,
+  runs: (orgId: string, limit: number) => ['automation', orgId, 'runs', limit] as const,
+  webhooks: (orgId: string) => ['automation', orgId, 'webhooks'] as const,
+  deliveries: (orgId: string) => ['automation', orgId, 'deliveries'] as const,
 }
 
 export function useMemberships(enabled = true) {

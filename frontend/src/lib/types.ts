@@ -801,3 +801,131 @@ export interface Twin {
     placed: number
   }
 }
+
+// ------------------------------------------------------------------------- automation (Phase 8)
+export type TriggerType = 'event' | 'schedule' | 'manual' | 'webhook'
+export type RunStatus = 'awaiting_approval' | 'succeeded' | 'failed' | 'rejected' | 'expired' | 'skipped'
+
+export interface WorkflowStep {
+  type: string
+  [param: string]: unknown
+}
+
+export interface Workflow {
+  id: string
+  name: string
+  description: string | null
+  trigger_type: TriggerType
+  trigger_config: { event?: string; min_severity?: string; include_simulated?: boolean; every_minutes?: number }
+  trigger_label: string
+  steps: { type: string; title: string; risk: string; params: Record<string, unknown> }[]
+  requires_approval: boolean
+  approval_forced: boolean
+  enabled: boolean
+  hook_path: string | null
+  next_run_at: string | null
+  last_run_at: string | null
+  last_status: string | null
+  owner_name: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkflowSecret {
+  workflow: Workflow
+  secret: string
+  hook_path: string
+}
+
+export interface AutomationRun {
+  id: string
+  workflow_id: string
+  workflow_name: string
+  status: RunStatus
+  trigger_kind: TriggerType
+  trigger_label: string
+  steps: { type: string | null; title: string | null; risk: string | null; status: string; detail: string | null; link: string | null }[]
+  context: Record<string, unknown>
+  requested_by_name: string | null
+  decided_by_name: string | null
+  decided_at: string | null
+  decision_comment: string | null
+  expires_at: string | null
+  error: string | null
+  is_simulated: boolean
+  created_at: string
+  finished_at: string | null
+}
+
+export interface Webhook {
+  id: string
+  name: string
+  provider: 'webhook' | 'n8n'
+  url: string
+  host: string
+  description: string | null
+  enabled: boolean
+  failure_count: number
+  last_error: string | null
+  last_success_at: string | null
+  created_at: string
+  used_by: number
+}
+
+export interface WebhookSecret {
+  webhook: Webhook
+  secret: string
+}
+
+export interface Delivery {
+  id: string
+  webhook_id: string
+  run_id: string | null
+  event_type: string
+  status: 'pending' | 'delivered' | 'failed'
+  attempts: number
+  next_attempt_at: string | null
+  last_status_code: number | null
+  last_error: string | null
+  response_ms: number | null
+  delivered_at: string | null
+  is_simulated: boolean
+  created_at: string
+}
+
+export interface AutomationOverview {
+  workflows: number
+  enabled: number
+  webhooks: number
+  awaiting_approval: number
+  runs_today: number
+  failed_today: number
+  deliveries_pending: number
+  deliveries_failed: number
+  signing_key: 'dedicated' | 'jwt' | 'ephemeral'
+  delivery_enabled: boolean
+  private_targets_allowed: boolean
+  emergency_stop: boolean
+}
+
+export interface Recipe {
+  key: string
+  name: string
+  description: string
+  trigger_type: TriggerType
+  trigger_config: Workflow['trigger_config']
+  steps: WorkflowStep[]
+  requires_approval: boolean
+  needs: string[]
+}
+
+export interface AutomationCatalog {
+  trigger_types: { key: TriggerType; title: string }[]
+  events: { key: string; title: string; description: string; filters: string[]; fields: string[] }[]
+  schedules: { every_minutes: number; title: string }[]
+  steps: { key: string; title: string; description: string; risk: string; permission: string | null; triggers: string[]; events: string[] }[]
+  indicator_types: string[]
+  audiences: string[]
+  recipes: Recipe[]
+  signature: { header: string; timestamp_header: string; algorithm: string; tolerance_seconds: number }
+}

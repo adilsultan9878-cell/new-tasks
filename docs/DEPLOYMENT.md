@@ -258,9 +258,25 @@ on sub-domains of one custom domain (`app.example.com` / `api.example.com`, `Sam
 | `SENSOR_READING_RETENTION_DAYS` | `7` | sensor readings older than this are purged by the background sweeper |
 | `CAMERA_SNAPSHOT_MAX_BYTES` | `1000000` | per camera snapshot (JPEG/PNG only, only while a camera's privacy mode is off) |
 | `VISION_EVENT_COOLDOWN_SECONDS` | `30` | the camera agent reports the same detection type at most this often |
+| `AUTOMATION_SIGNING_KEY` | derived from `JWT_SECRET` | master key for webhook signing secrets (≥ 32 chars in production; `render.yaml` generates one). Changing it changes every webhook secret |
+| `AUTOMATION_ALLOW_PRIVATE_TARGETS` | `false` | `true` lets webhooks reach private/LAN/docker addresses (local n8n). Keep `false` in production |
+| `AUTOMATION_DELIVERY_ENABLED` | `true` | `false` keeps deliveries queued (air-gapped labs) |
+| `AUTOMATION_TICK_SECONDS` | `5` | how often the worker runs schedules, expiries and deliveries |
+| `WEBHOOK_TIMEOUT_SECONDS` / `WEBHOOK_MAX_ATTEMPTS` | `10` / `6` | per delivery attempt / attempts before giving up |
+| `INBOUND_HOOK_MAX_BYTES` / `RATE_LIMIT_HOOKS_PER_MINUTE` | `65536` / `60` | incoming hook body limit / per hook and client address |
+| `SIGNATURE_TOLERANCE_SECONDS` | `300` | accepted clock difference for signed requests |
 | `EVIDENCE_MAX_BYTES` | `5000000` | per evidence file; files live in the database (count them against the Supabase free quota), larger material is registered by hash |
 
 ---
+
+## Optional: local n8n for automation
+
+```bash
+docker compose --profile automation up -d n8n
+```
+
+Open http://localhost:5678, then follow [integrations/n8n/README.md](../integrations/n8n/README.md)
+to send alerts to chat and to let n8n call SENTINEL X with signed requests.
 
 ## Optional: local MQTT broker for sensor boards
 
@@ -286,6 +302,7 @@ computer next to the broker (see `agent/README.md`). Anonymous MQTT clients are 
 - [ ] API connects as `sentinel_app`; dashboard shows **RLS: Enforced**
 - [ ] `CORS_ORIGINS` lists only your console origin(s)
 - [ ] `ALLOW_REGISTRATION` decided (public sign-up vs invite-only)
+- [ ] `AUTOMATION_SIGNING_KEY` set (≥ 32 random chars) and `AUTOMATION_ALLOW_PRIVATE_TARGETS=false`
 - [ ] Database backups enabled; restore tested
 - [ ] Uptime monitor on `/health` (also keeps a free Render instance warm, within the provider's terms)
 - [ ] Custom domain with HTTPS for the console
