@@ -102,6 +102,10 @@ def attempt(
     """One delivery attempt. Updates the row and the webhook's health; never raises."""
     settings = get_settings()
     at = at or now()
+    if not settings.automation_delivery_enabled:  # air-gapped labs and scanners: nothing leaves
+        item.last_error = "Deliveries are switched off on this server (AUTOMATION_DELIVERY_ENABLED=false)"
+        db.flush()
+        return item
     item.attempts += 1
     url = (hook.config or {}).get("url", "")
     code: int | None = None

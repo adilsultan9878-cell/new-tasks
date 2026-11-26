@@ -452,3 +452,21 @@ def test_responses_made_outside_the_app_still_carry_security_headers(fleet):
         assert resp.headers["Cross-Origin-Resource-Policy"] == "same-origin", (
             name
         )  # ZAP 90004 wants same-origin
+
+
+def test_concurrent_modification_is_a_409_not_a_500(fleet):
+    """Found by the fuzzer in CI: one request deleted a webhook while another updated it."""
+    from sqlalchemy.orm.exc import StaleDataError
+
+    def _raise() -> None:
+        raise StaleDataError(
+            "UPDATE statement on table 'integrations' expected to update 1 row(s); 0 were matched."
+        )
+
+    app.router.add_api_route(f"{API}/__stale_probe", _raise, methods=["POST"])
+    try:
+        resp = make_client().post(f"{API}/__stale_probe")
+    finally:
+        app.router.routes.pop()
+    assert resp.status_code == 409 and resp.json()["error"]["code"] == "conflict"
+    assert "integrations" not in resp.text  # no SQL details leak
