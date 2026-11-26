@@ -231,6 +231,8 @@ on sub-domains of one custom domain (`app.example.com` / `api.example.com`, `Sam
 | `RATE_LIMIT_AUTH_PER_MINUTE` | `10` | login/register/password change, per IP & path |
 | `RATE_LIMIT_REFRESH_PER_MINUTE` | `120` | per IP |
 | `RATE_LIMIT_DEFAULT_PER_MINUTE` | `300` | all `/api` traffic, per IP |
+| `REDIS_URL` | — | shared rate-limit counters for several API instances (`redis://` or `rediss://`); empty = per instance. If Redis goes down the API falls back to per-instance limits |
+| `MAX_REQUEST_BYTES` | `1048576` | largest request body for ordinary routes; upload routes (evidence, snapshots, scan imports, agent batches) have their own larger limits |
 | `RUN_MIGRATIONS_ON_START` | `true` | container start-up only |
 | `FORWARDED_ALLOW_IPS` | `127.0.0.1` | proxies trusted for `X-Forwarded-For` |
 | `DB_POOL_SIZE` / `DB_MAX_OVERFLOW` | `5` / `5` | keep small on free database tiers |
@@ -302,6 +304,7 @@ computer next to the broker (see `agent/README.md`). Anonymous MQTT clients are 
 - [ ] API connects as `sentinel_app`; dashboard shows **RLS: Enforced**
 - [ ] `CORS_ORIGINS` lists only your console origin(s)
 - [ ] `ALLOW_REGISTRATION` decided (public sign-up vs invite-only)
+- [ ] More than one API instance? Set `REDIS_URL` so rate limits are shared
 - [ ] `AUTOMATION_SIGNING_KEY` set (≥ 32 random chars) and `AUTOMATION_ALLOW_PRIVATE_TARGETS=false`
 - [ ] Database backups enabled; restore tested
 - [ ] Uptime monitor on `/health` (also keeps a free Render instance warm, within the provider's terms)

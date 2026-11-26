@@ -12,6 +12,7 @@ from app.api.v1.routes import (
     events,
     health,
     intel,
+    lab,
     network,
     notifications,
     organizations,
@@ -37,3 +38,4 @@ api_router.include_router(soc.router)
 api_router.include_router(aegis.router)
 api_router.include_router(automation.router)
 api_router.include_router(automation.hooks_router)
+api_router.include_router(lab.router)

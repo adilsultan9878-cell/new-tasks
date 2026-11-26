@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.schemas.common import APIModel
+from app.schemas.common import APIModel, no_nulls
 
 KEY = r"^[a-z0-9][a-z0-9_-]{0,63}$"
 Actuator = Literal["led", "buzzer"]
@@ -95,6 +95,7 @@ class Thresholds(BaseModel):
 
 
 class SensorUpdate(BaseModel):
+    _no_nulls = no_nulls("name")
     name: str | None = Field(default=None, min_length=1, max_length=120)
     unit: str | None = Field(default=None, max_length=16)
     thresholds: Thresholds | None = None

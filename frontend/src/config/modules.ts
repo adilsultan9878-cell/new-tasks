@@ -59,7 +59,7 @@ export const MODULE_GROUPS: { key: ModuleGroupKey; label: string; caption: strin
 ]
 
 /** Highest phase that has shipped (drives the roadmap timeline). */
-export const COMPLETED_PHASE = 8
+export const COMPLETED_PHASE = 9
 
 export const PHASES: Record<number, string> = {
   1: 'Foundation',
@@ -206,10 +206,10 @@ export const MODULES: PlatformModule[] = [
     capabilities: ['API & database health', 'Row-Level Security posture', 'Sessions & password'],
   },
   {
-    key: 'research', name: 'Research Lab', group: 'admin', icon: FlaskConical, status: 'planned', phase: 9,
-    path: 'm/research',
-    summary: 'Sandboxed space for detection-rule experiments and model evaluation on recorded, non-production data.',
-    capabilities: ['Rule playground', 'Model evaluation datasets', 'Reproducible experiments'],
+    key: 'research', name: 'Research Lab', group: 'nexus', icon: FlaskConical, status: 'live', phase: 9,
+    path: 'lab', permission: 'lab:read',
+    summary: 'Try a detection rule on frozen copies of past events before trusting it: precision, recall and alert volume against the built-in rules. Never touches live alerts.',
+    capabilities: ['Labelled datasets from your own events (or uploaded lab data)', 'Safe rule playground with thresholds', 'Reproducible, hash-pinned experiments'],
   },
 ]
 

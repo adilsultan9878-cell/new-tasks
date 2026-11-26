@@ -48,7 +48,7 @@ flowchart TB
       fn["functions/api/[[path]].js<br/>reverse proxy"]
     end
     subgraph API["FastAPI (uvicorn)"]
-      mw[Middleware<br/>request-id · security headers · global rate limit · CORS]
+      mw[Middleware<br/>request-id · security headers · body limits · rate limits (Redis or in-process) · CORS]
       deps[Dependencies<br/>JWT auth → membership → permissions → tenant binding]
       routes[Routers<br/>auth · organizations · members · dashboard · audit · notifications · health]
       svc[Services<br/>auth · organizations · dashboard · audit · health]
@@ -118,7 +118,7 @@ sequenceDiagram
 | 17 | Organization Management | Admin | 1 | **Live** |
 | 18 | User & Role Management | Admin | 1 | **Live** |
 | 19 | System Settings | Admin | 1 | **Live** (status + account security) |
-| 20 | Research Lab | Admin | 9 | Designed |
+| 20 | Research Lab | NEXUS ZERO | 9 | **Live** |
 | — | Audit Log | Admin | 1 | **Live** |
 | — | Security Events | SENTINEL X | 2 | **Live** |
 
@@ -263,6 +263,19 @@ flowchart LR
   the version; rotation bumps it.
 * **Loop guard:** a context flag marks code running inside a workflow; events it causes do not
   trigger workflows, so SENTINEL X and n8n cannot ping-pong.
+
+## 6e. Research Lab (implemented — Phase 9)
+
+The lab answers "would this rule have been better than what we run today?" without touching
+production. A **dataset** is a frozen, time-ordered copy of recorded events (or uploaded lab data)
+with labels taken from analyst decisions — an alert closed as false positive makes its event
+*benign*, a resolved alert or one linked to an incident makes it *malicious*. Its SHA-256 is stored
+and a PostgreSQL trigger forbids edits. A **rule** is data only (`app/lab/rules.py`): conditions on
+category, event type, severity, title, source or device, joined by *all* / *any*, with an optional
+"N times within M minutes per device" threshold. Nothing is executed or interpolated. An
+**experiment** scores the rule (precision, recall, F1, alerts per day, sample hits and misses)
+next to the built-in severity rule, and stores the dataset hash, rule hash and engine version, so
+`POST …/reproduce` can prove the result is unchanged.
 
 ## 7. Security Event Engine (implemented — Phase 2)
 

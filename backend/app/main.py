@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.types import ASGIApp
 
 from app import __version__
 from app.api.v1.health_alias import router as root_health_router
@@ -15,7 +16,7 @@ from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging
-from app.core.middleware import install_middleware
+from app.core.middleware import SecurityHeadersMiddleware, install_middleware
 
 log = logging.getLogger("sentinel")
 
@@ -59,11 +60,18 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
                 await task
 
 
+class SentinelAPI(FastAPI):
+    """FastAPI with the security headers wrapped around the whole middleware stack."""
+
+    def build_middleware_stack(self) -> ASGIApp:
+        return SecurityHeadersMiddleware(super().build_middleware_stack())
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings.log_level)
     docs_enabled = settings.environment != "production"
-    app = FastAPI(
+    app = SentinelAPI(
         title=settings.app_name,
         version=__version__,
         description="Unified AI-assisted security operations platform (AEGIS ONE · NEXUS ZERO · SENTINEL X).",
@@ -71,6 +79,7 @@ def create_app() -> FastAPI:
         docs_url="/docs" if docs_enabled else None,
         redoc_url=None,
         openapi_url="/openapi.json" if docs_enabled else None,
+        max_body_size=settings.max_request_bytes,  # upload routes override it (app/core/limits.py)
     )
     install_error_handlers(app)
     install_middleware(app)

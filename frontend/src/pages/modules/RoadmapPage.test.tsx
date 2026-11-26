@@ -7,6 +7,11 @@ import { renderInOrg } from '@/test/utils'
 import { RoadmapPage } from './RoadmapPage'
 
 describe('RoadmapPage', () => {
+  it('says so when every module is live', () => {
+    renderInOrg(<RoadmapPage />)
+    if (MODULES.every((m) => m.status === 'live')) expect(screen.getByText('Every module is live')).toBeInTheDocument()
+  })
+
   it('lists every planned module with a link to its details', () => {
     renderInOrg(<RoadmapPage />)
     for (const m of MODULES.filter((x) => x.status === 'planned')) {

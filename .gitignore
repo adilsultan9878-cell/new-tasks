@@ -33,3 +33,7 @@ Thumbs.db
 
 # Local sandbox artifacts
 *.sandbox-ca.crt
+
+# Security scan reports (Phase 9)
+zap-report/
+schemathesis-report/

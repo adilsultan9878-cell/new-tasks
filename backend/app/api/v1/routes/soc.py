@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 
 from app.api.deps import DB, OrgContext, require
 from app.api.v1.routes.events import alerts_out
+from app.core import limits
 from app.core.errors import AppError, not_found
 from app.models import (
     Alert,
@@ -498,7 +499,12 @@ def blocklist(
 
 
 # --------------------------------------------------------------------------------- evidence
-@router.post("/incidents/{incident_id}/evidence", response_model=EvidenceOut, status_code=201)
+@router.post(
+    "/incidents/{incident_id}/evidence",
+    response_model=EvidenceOut,
+    status_code=201,
+    max_body_size=limits.evidence(),
+)
 def add_evidence(
     incident_id: uuid.UUID,
     body: EvidenceCreate,

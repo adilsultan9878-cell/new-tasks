@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app import __version__
 from app.core.config import get_settings
+from app.core.rate_limit import limiter
 from app.schemas.dashboard import DatabaseHealth, SystemHealth
 
 STARTED_AT = time.monotonic()
@@ -53,5 +54,6 @@ def system_health(db: Session) -> SystemHealth:
         environment=get_settings().environment,
         database=database,
         realtime="available",  # WebSocket stream at /api/v1/ws
+        rate_limiter=limiter.status(),
         uptime_seconds=int(time.monotonic() - STARTED_AT),
     )

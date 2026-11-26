@@ -18,9 +18,10 @@ and **human-approved** automated defense. It is built phase by phase. Every feat
 is implemented end to end and covered by automated tests. Nothing in the UI is a mock or a fake
 counter.
 
-> **Status: Phase 8 (Automation) complete — v0.8.0.** Phases 1-7 shipped in v0.1.0-v0.7.0;
-> Phase 9 (Hardening & testing) is next. Only working modules are in the sidebar; everything
-> planned is on the "What's next" page. See [docs/ROADMAP.md](docs/ROADMAP.md) for the full list.
+> **Status: Phase 9 (Hardening & testing) complete — v0.9.0.** All 20 modules are live.
+> Phase 10 (Deployment) is next. Security testing and load-test results:
+> [docs/SECURITY.md](docs/SECURITY.md#phase-9-security-testing-results) and
+> [docs/PERFORMANCE.md](docs/PERFORMANCE.md). Full list: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## What works today
 
@@ -52,6 +53,8 @@ counter.
 | 📷 **Computer Vision** | The agent watches a camera with OpenCV and reports motion, people and people inside the restricted zones you draw — video stays on your computer and nothing identifies anyone. Detection starts off; snapshots are opt-in, blurred and expire. |
 | 🧊 **Digital Twin** | A live 3D map of your site (Three.js): devices coloured by status and as tall as their risk, pulsing rings for open alerts, a red beacon for open incidents, sensors and cameras around their board, and network segments. Draw rooms, drag devices into place, or switch to a simple room-by-room list. |
 | ⚙️ **Automation** | Workflows from ready recipes: tell the team about serious alerts, send alerts or a daily summary to n8n (Slack, Teams, email), open incidents for critical alerts, let n8n propose blocks. Signed webhooks both ways (HMAC, timestamps, replay protection, SSRF guard, retries). Anything that changes your defences waits for an approver; the emergency stop pauses everything. Guide: [integrations/n8n](integrations/n8n/README.md). |
+| 🧪 **Research Lab** | Try a detection rule on a frozen copy of past events before you trust it: precision, recall, F1 and alerts per day next to the built-in rules, labels from what your analysts decided, and a one-click check that every result reproduces. Never touches live alerts. |
+| 🛡️ **Hardening** | Every API route checked automatically for authentication and tenant isolation, API fuzzing (Schemathesis), OWASP ZAP scanning, dependency audits, request size limits, Redis-shared rate limits and measured load tests. |
 | 🗺️ **Roadmap pages** | Modules that are not built yet show what they will do and which phase delivers them. They contain no fake buttons. |
 
 ## Architecture at a glance
@@ -140,11 +143,14 @@ The Threat Intelligence page shows which sources are configured.
 
 | Suite | Command | Covers |
 |---|---|---|
-| Backend (SQLite) | `cd backend; pytest` | health, auth, organizations, RBAC, tenant isolation, enrollment, device auth, ingestion, detection rules, sweeper, WebSocket, real agent ↔ live server, investigations (URL/domain/IP/hash/email), SSRF guard, KEV/NVD, scopes, Nmap import, Security Brain agents, scoring and read-only guards, incidents, approvals, emergency stop, evidence and reports, IoT hubs, actuators, vision privacy, simulator, live bridge/camera protocol, digital twin, automation: approval gates, signed webhooks in and out, SSRF guard, retries, loop guard, schedules (152 tests) |
-| Backend (PostgreSQL + RLS) | `$env:TEST_DATABASE_URL="postgresql://postgres:<pw>@localhost:5432/postgres"; pytest` | everything above, run as the least-privileged DB role, plus RLS proofs for every tenant table and evidence immutability triggers (160 tests) |
+| Backend (SQLite) | `cd backend; pytest` | health, auth, organizations, RBAC, tenant isolation, enrollment, device auth, ingestion, detection rules, sweeper, WebSocket, real agent ↔ live server, investigations (URL/domain/IP/hash/email), SSRF guard, KEV/NVD, scopes, Nmap import, Security Brain agents, scoring and read-only guards, incidents, approvals, emergency stop, evidence and reports, IoT hubs, actuators, vision privacy, simulator, live bridge/camera protocol, digital twin, automation, security sweep over every route, token forgery, body limits, fuzzing regressions, query budgets, Redis rate limits (real Redis), research lab (172 tests) |
+| Backend (PostgreSQL + RLS) | `$env:TEST_DATABASE_URL="postgresql://postgres:<pw>@localhost:5432/postgres"; pytest` | everything above, run as the least-privileged DB role, plus RLS proofs for every tenant table evidence and lab immutability triggers, and concurrent-transaction races (182 tests) |
 | Agent | `cd agent; python -m pytest` | config allow-list, no-command-execution guard, collectors, detectors, offline spool, revocation, OpenCV camera monitor, MQTT bridge, ESP32 firmware with fake hardware (29 tests; CI runs them on Linux **and Windows**) |
-| Frontend unit/component | `cd frontend; npm test` | API client, session refresh, sidebar RBAC, dashboard, devices, events, live WebSocket client, Pages proxy, investigation view, Security Brain, roadmap, SOC, IoT, vision, digital twin and automation pages (44 tests) |
-| End-to-end (Playwright) | `cd frontend; npx playwright install chromium; npx playwright test` | sign-up → org → dashboard → sign-in again; tenant isolation and RBAC; **real agent enrolled from the console, shown live, then revoked**; high-severity report → alert toast; phishing analysis → alert; Nmap import respects scopes; new alert auto-triaged by the Security Brain, organization analysis and report download; alert → incident → approved block → evidence → report, and the emergency stop; simulator → sensors, outputs, camera zone; 3D twin renders, list view, rooms saved; webhook secret shown once, signed test delivery verified by a local receiver, recipe workflows, alert forwarded, incident approved (14 tests, intel providers offline for determinism) |
+| Frontend unit/component | `cd frontend; npm test` | API client, session refresh, sidebar RBAC, dashboard, devices, events, live WebSocket client, Pages proxy, investigation view, Security Brain, roadmap, SOC, IoT, vision, digital twin, automation and research lab pages (47 tests) |
+| End-to-end (Playwright) | `cd frontend; npx playwright install chromium; npx playwright test` | sign-up → org → dashboard → sign-in again; tenant isolation and RBAC; **real agent enrolled from the console, shown live, then revoked**; high-severity report → alert toast; phishing analysis → alert; Nmap import respects scopes; new alert auto-triaged by the Security Brain, organization analysis and report download; alert → incident → approved block → evidence → report, and the emergency stop; simulator → sensors, outputs, camera zone; 3D twin renders, list view, rooms saved; webhook secret shown once, signed test delivery verified by a local receiver, recipe workflows, alert forwarded, incident approved; lab data uploaded, rule backtested and reproduced (15 tests, intel providers offline for determinism) |
+| API fuzzing | `cd backend; python scripts/fuzz_api.py` | Schemathesis generates thousands of requests for every operation of the OpenAPI document; fails on any 5xx |
+| DAST | `cd backend; python scripts/dast_zap.py` (needs Docker) | OWASP ZAP passive + active scan of every API path, authenticated; fails on Medium/High findings |
+| Load test | `pip install -r perf/requirements.txt; locust -f perf/locustfile.py --host http://127.0.0.1:8000` | console users and agents; results and method in [docs/PERFORMANCE.md](docs/PERFORMANCE.md) |
 | Lint / types | `ruff check .` · `npm run lint` · `npm run typecheck` | |
 
 CI runs all of the above on every push ([.github/workflows/ci.yml](.github/workflows/ci.yml)).

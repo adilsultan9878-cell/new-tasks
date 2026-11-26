@@ -12,6 +12,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.aegis import iot as iot_service
 from app.aegis import vision as vision_service
 from app.api.deps import DB
+from app.core import limits
 from app.core.config import get_settings
 from app.core.rate_limit import auth_rate_limit, enforce
 from app.models import Device
@@ -74,7 +75,7 @@ def heartbeat(body: HeartbeatRequest, device: CurrentDevice, db: DB) -> Heartbea
     )
 
 
-@router.post("/events", response_model=IngestResult)
+@router.post("/events", response_model=IngestResult, max_body_size=limits.agent_events())
 def submit_events(body: EventBatch, device: CurrentDevice, db: DB) -> IngestResult:
     outcome = event_service.ingest(db, device.organization_id, body.events, source="agent", device=device)
     device.last_seen_at = datetime.now(UTC)
@@ -115,7 +116,7 @@ def sensor_readings(body: ReadingBatch, device: CurrentDevice, db: DB) -> Readin
     return ReadingResult(**outcome)
 
 
-@router.post("/vision/detections", response_model=DetectionResult)
+@router.post("/vision/detections", response_model=DetectionResult, max_body_size=limits.camera_snapshot())
 def vision_detections(body: DetectionBatch, device: CurrentDevice, db: DB) -> DetectionResult:
     """Detections from the on-site camera agent (never video). Returns the camera's settings."""
     outcome = vision_service.ingest(

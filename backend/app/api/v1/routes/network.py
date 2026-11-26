@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy import select
 
 from app.api.deps import DB, OrgContext, require
+from app.core import limits
 from app.core.errors import AppError, not_found
 from app.models import NetworkAsset, NetworkScope
 from app.schemas.intel import AssetOut, ScanImport, ScanImportResult, ScopeCreate, ScopeOut
@@ -86,7 +87,7 @@ def delete_scope(
     return Response(status_code=204)
 
 
-@router.post("/imports", response_model=ScanImportResult)
+@router.post("/imports", response_model=ScanImportResult, max_body_size=limits.scan_import())
 def import_scan(
     body: ScanImport, ctx: Annotated[OrgContext, Depends(require("network:manage"))], request: Request, db: DB
 ) -> ScanImportResult:

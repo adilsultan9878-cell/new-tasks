@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm.exc import StaleDataError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.logging import request_id_ctx
@@ -82,6 +83,18 @@ def install_error_handlers(app: FastAPI) -> None:
         return JSONResponse(
             _envelope("validation_error", "Request validation failed", details),
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        )
+
+    @app.exception_handler(StaleDataError)
+    async def _stale(_: Request, exc: StaleDataError) -> JSONResponse:
+        # Two requests changed the same record at once (e.g. one deleted it while the other
+        # updated it). Not a server fault: the client should reload and try again.
+        log.info("Concurrent modification: %s", exc)
+        return JSONResponse(
+            _envelope(
+                "conflict", "This record was changed or deleted by another request — reload and try again"
+            ),
+            status_code=status.HTTP_409_CONFLICT,
         )
 
     @app.exception_handler(Exception)

@@ -31,6 +31,16 @@ export function RoadmapPage() {
         })}
       </ol>
 
+      {planned.length === 0 && (
+        <SpotlightCard className="p-6">
+          <p className="flex items-center gap-2 font-medium text-fg"><CircleCheck className="size-5 text-ok" aria-hidden /> Every module is live</p>
+          <p className="mt-2 max-w-2xl text-sm text-fg-muted">
+            All {MODULES.length} modules are built and tested. Phase {COMPLETED_PHASE + 1} ({PHASES[COMPLETED_PHASE + 1]}) adds no new modules: it puts the
+            platform online — database, API and console hosting, e-mail, sign-up policy and monitoring.
+          </p>
+        </SpotlightCard>
+      )}
+
       <div className="space-y-8">
         {phases.map((phase) => (
           <section key={phase}>

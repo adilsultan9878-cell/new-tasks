@@ -644,3 +644,13 @@ def test_automation_is_tenant_isolated(fleet, account_factory):
         "create_event",
     }
     assert len(catalog["recipes"]) == 7
+
+
+def test_switched_off_deliveries_send_nothing_even_on_test_or_retry(fleet, receiver, monkeypatch):
+    hook, _ = _webhook(fleet)
+    monkeypatch.setattr(get_settings(), "automation_delivery_enabled", False)
+    test = fleet.owner.post(_auto(fleet, f"/webhooks/{hook['id']}/test")).json()
+    assert test["status"] == "pending" and test["attempts"] == 0 and "switched off" in test["last_error"]
+    retry = fleet.owner.post(_auto(fleet, f"/deliveries/{test['id']}/retry")).json()
+    assert retry["status"] == "pending" and receiver.requests == []
+    assert worker.tick()["delivered"] == 0 and receiver.requests == []

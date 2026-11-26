@@ -23,6 +23,15 @@ services:
       timeout: 5s
       retries: 20
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]  # rate-limit counters only: nothing to persist
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   backend:
     build: ./backend
     environment:
@@ -31,6 +40,8 @@ services:
       MIGRATION_DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres_dev_password}@db:5432/sentinel
       JWT_SECRET: ${JWT_SECRET:-}
       AUTOMATION_SIGNING_KEY: ${AUTOMATION_SIGNING_KEY:-}
+      # Shared rate-limit counters, so several API replicas enforce one budget per client.
+      REDIS_URL: redis://redis:6379/0
       # Local stack only: lets webhooks reach the n8n container (http://n8n:5678). Keep false in production.
       AUTOMATION_ALLOW_PRIVATE_TARGETS: ${AUTOMATION_ALLOW_PRIVATE_TARGETS:-true}
       CORS_ORIGINS: http://localhost:8080,http://localhost:5173
@@ -39,6 +50,8 @@ services:
       FORWARDED_ALLOW_IPS: "*"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "127.0.0.1:8000:8000"

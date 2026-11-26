@@ -63,8 +63,13 @@ class Settings(BaseSettings):
     allow_registration: bool = True
 
     # --- HTTP ------------------------------------------------------------------------------
+    # Largest request body for ordinary routes (bytes). Upload routes (evidence, camera snapshots,
+    # scan imports, agent event batches) get their own, larger limits derived from their settings.
+    max_request_bytes: int = Field(default=1_048_576, ge=65_536, le=50_000_000)
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     rate_limit_enabled: bool = True
+    # Shared rate-limit storage for several API instances, e.g. redis://:password@host:6379/0 or rediss://
+    redis_url: str = Field(default="", repr=False)
     rate_limit_auth_per_minute: int = 10
     # Refresh tokens are unguessable (384-bit), so this only guards against abuse; it must be
     # generous enough for many users behind one NAT reloading pages.

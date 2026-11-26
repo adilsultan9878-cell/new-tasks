@@ -9,6 +9,7 @@ import uuid
 
 from fastapi import Request, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, forbidden, not_found
@@ -52,6 +53,7 @@ def create_organization(
             f"You can belong to at most {MAX_ORGS_PER_USER} organizations",
         )
 
+    slug_requested = slug
     if slug:
         if db.scalar(select(Organization.id).where(Organization.slug == slug)):
             raise AppError(status.HTTP_409_CONFLICT, "slug_taken", "That organization URL is taken")
@@ -61,17 +63,31 @@ def create_organization(
         while db.scalar(select(Organization.id).where(Organization.slug == slug)):
             slug = f"{base[:50]}-{secrets.token_hex(3)}"
 
-    org = Organization(
-        id=uuid.uuid4(),
-        name=name,
-        slug=slug,
-        description=description,
-        industry=industry,
-        created_by=user.id,
-        settings={},
-    )
-    db.add(org)
-    db.flush()
+    explicit = bool(slug_requested)
+    base = slug if explicit else slugify(name)
+    # The checks above are a fast path; the unique index decides. Two people creating "Acme" at the
+    # same moment both pass the check, so an automatic slug retries with a suffix (found under load).
+    for attempt in range(6):
+        org = Organization(
+            id=uuid.uuid4(),
+            name=name,
+            slug=slug,
+            description=description,
+            industry=industry,
+            created_by=user.id,
+            settings={},
+        )
+        try:
+            with db.begin_nested():
+                db.add(org)
+                db.flush()
+            break
+        except IntegrityError:
+            if explicit or attempt == 5:
+                raise AppError(
+                    status.HTTP_409_CONFLICT, "slug_taken", "That organization URL is taken"
+                ) from None
+            slug = f"{base[:50]}-{secrets.token_hex(3)}"
     set_tenant_context(db, org_id=org.id)
     member = OrganizationMember(
         id=uuid.uuid4(),

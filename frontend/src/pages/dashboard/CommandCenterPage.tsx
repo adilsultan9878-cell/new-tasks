@@ -3,6 +3,7 @@ import {
   Activity,
   ArrowRight,
   CircleCheck,
+  Gauge,
   CircleDashed,
   Database,
   MonitorSmartphone,
@@ -272,9 +273,16 @@ const LIVE_LABEL = {
   offline: { text: 'Not connected', tone: 'idle' },
 } as const
 
+const LIMITER_LABEL = {
+  memory: { text: 'Per instance', tone: 'ok' },
+  redis: { text: 'Shared (Redis)', tone: 'ok' },
+  redis_unavailable: { text: 'Redis down · per instance', tone: 'warn' },
+} as const
+
 export function SystemHealthPanel({ system }: { system: SystemHealth }) {
   const rls = RLS_LABEL[system.database.row_level_security] ?? RLS_LABEL.unknown!
   const live = LIVE_LABEL[useRealtime().status]
+  const limiterLabel = LIMITER_LABEL[system.rate_limiter ?? 'memory']
   return (
     <Panel title="System health" description={`API v${system.version} · ${system.environment}`}>
       <ul className="-my-2 divide-y divide-line">
@@ -287,6 +295,7 @@ export function SystemHealthPanel({ system }: { system: SystemHealth }) {
         />
         <HealthRow icon={ShieldCheck} label="Row-Level Security" value={rls.text} tone={rls.tone} />
         <HealthRow icon={Zap} label="Realtime stream" value={live.text} tone={live.tone} />
+        <HealthRow icon={Gauge} label="Rate limiting" value={limiterLabel.text} tone={limiterLabel.tone} />
       </ul>
     </Panel>
   )

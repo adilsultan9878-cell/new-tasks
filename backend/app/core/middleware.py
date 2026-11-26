@@ -9,6 +9,8 @@ import uuid
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
+from starlette.datastructures import MutableHeaders
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import get_settings
 from app.core.logging import request_id_ctx
@@ -23,10 +25,49 @@ SECURITY_HEADERS = {
     "Referrer-Policy": "no-referrer",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     "Cross-Origin-Opener-Policy": "same-origin",
-    "Cross-Origin-Resource-Policy": "same-site",
+    # same-origin: only no-cors loads (img, script) are affected; the console uses CORS fetch.
+    "Cross-Origin-Resource-Policy": "same-origin",
     # The API only returns JSON; the interactive docs need inline assets, so they are excluded.
     "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
 }
+
+
+class SecurityHeadersMiddleware:
+    """Outermost ASGI layer: every response carries the security headers.
+
+    Some responses never reach the application middleware — CORS preflights answered by
+    CORSMiddleware and 413s for oversized bodies refused before routing. Wrapping the whole stack
+    covers them too (found by the OWASP ZAP scan in Phase 9).
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+        settings = get_settings()
+        self.api_prefix = settings.api_prefix
+        self.production = settings.environment == "production"
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        path = scope.get("path", "")
+
+        async def send_with_headers(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(raw=list(message.get("headers", [])))
+                for name, value in SECURITY_HEADERS.items():
+                    if name == "Content-Security-Policy" and path in ("/docs", "/redoc"):
+                        continue  # the interactive docs need inline assets
+                    if name not in headers:
+                        headers[name] = value
+                if self.production:
+                    headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+                if path.startswith(self.api_prefix) and "cache-control" not in headers:
+                    headers["Cache-Control"] = "no-store"
+                message["headers"] = headers.raw
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
 
 
 def install_middleware(app: FastAPI) -> None:
@@ -60,15 +101,7 @@ def install_middleware(app: FastAPI) -> None:
             else:
                 response = await call_next(request)
 
-            response.headers["X-Request-ID"] = request_id
-            for name, value in SECURITY_HEADERS.items():
-                if name == "Content-Security-Policy" and request.url.path in ("/docs", "/redoc"):
-                    continue
-                response.headers.setdefault(name, value)
-            if settings.environment == "production":
-                response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
-            if request.url.path.startswith(settings.api_prefix):
-                response.headers.setdefault("Cache-Control", "no-store")
+            response.headers["X-Request-ID"] = request_id  # security headers: SecurityHeadersMiddleware
             log.info(
                 "request",
                 extra={

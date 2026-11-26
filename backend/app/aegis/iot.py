@@ -91,11 +91,21 @@ def _sensor(
     return sensor
 
 
-def actuator_state(db: Session, device: Device) -> dict[str, dict[str, Any]]:
-    """Desired state of the hub's actuators: a manual override wins until it expires, else the rules."""
-    sensors = db.scalars(
-        select(Sensor).where(Sensor.organization_id == device.organization_id, Sensor.device_id == device.id)
-    ).all()
+def actuator_state(
+    db: Session, device: Device, sensors: list[Sensor] | None = None
+) -> dict[str, dict[str, Any]]:
+    """Desired state of the hub's actuators: a manual override wins until it expires, else the rules.
+
+    Pass the device's sensors when listing many hubs, so the state needs no query per hub.
+    """
+    if sensors is None:
+        sensors = list(
+            db.scalars(
+                select(Sensor).where(
+                    Sensor.organization_id == device.organization_id, Sensor.device_id == device.id
+                )
+            )
+        )
     overrides = (device.attributes or {}).get("actuators") or {}
     state: dict[str, dict[str, Any]] = {}
     for name in ACTUATORS:
