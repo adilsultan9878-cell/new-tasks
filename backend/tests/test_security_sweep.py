@@ -35,9 +35,11 @@ PUBLIC_2XX = {
     ("GET", f"{API}/health"),
     ("GET", f"{API}/health/ready"),
     ("POST", f"{API}/auth/logout"),  # idempotent: clears the cookie even when there is none
+    ("GET", f"{API}/auth/policy"),  # who may sign up: needed by the sign-up page before any login
 }
 # Routes authenticated by something other than a user session; they must still refuse anonymous calls.
-NON_USER_AUTH = {f"{API}/agent/", f"{API}/hooks/"}
+# (Invitation lookup is authenticated by the single-use invitation token in the body.)
+NON_USER_AUTH = {f"{API}/agent/", f"{API}/hooks/", f"{API}/invitations/lookup"}
 
 
 def _routes() -> list[tuple[str, str]]:
@@ -421,6 +423,13 @@ def test_fuzzer_findings_stay_fixed(fleet):
     assert (
         fleet.owner.patch(f"{o}/sensors/{sensor['id']}", json={"unit": None}).status_code == 200
     )  # nullable column
+    for bad in (
+        {"indicator_type": "domain", "value": "0"},
+        {"indicator_type": "ipv4", "value": "::1"},
+        {"indicator_type": "sha256", "value": "abc"},
+        {"indicator_type": "url", "value": "javascript:x"},
+    ):
+        assert fleet.owner.post(f"{o}/indicators", json=bad).status_code == 422, bad
     for path in ("/automation/runs", "/automation/deliveries", "/events", "/audit-logs"):
         assert fleet.owner.get(f"{o}{path}", params={"offset": 9223372036854775808}).status_code == 422
 

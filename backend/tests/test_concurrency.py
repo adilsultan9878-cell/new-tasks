@@ -25,3 +25,14 @@ def test_explicit_slug_conflict_is_a_409(account_factory):
     assert a.post("/api/v1/organizations", json={"name": "Blue Team", "slug": "blue-team"}).status_code == 201
     taken = b.post("/api/v1/organizations", json={"name": "Other Blue Team", "slug": "blue-team"})
     assert taken.status_code == 409 and taken.json()["error"]["code"] == "slug_taken"
+
+
+def test_simultaneous_identical_indicators(fleet, postgres_only):
+    """Found by fuzzing in CI: two requests adding the same indicator at once (unique index)."""
+    url = f"/api/v1/organizations/{fleet.org_id}/indicators"
+    body = {"indicator_type": "domain", "value": "race.example", "verdict": "malicious"}
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        codes = list(pool.map(lambda _: fleet.owner.post(url, json=body).status_code, range(6)))
+    assert codes == [201] * 6
+    rows = [i for i in fleet.owner.get(url).json()["items"] if i["value"] == "race.example"]
+    assert len(rows) == 1

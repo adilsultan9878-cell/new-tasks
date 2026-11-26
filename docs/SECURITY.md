@@ -197,6 +197,7 @@ Run on v0.9.0 (2026-11-25). The automated parts run in CI on every push.
 | DAST (CI run) | CORS preflight answers and early 413s came from middleware outside the application and missed the security headers (ZAP: *Cross-Origin-Resource-Policy missing*, Low) | an outermost ASGI layer adds the headers to every response, and `Cross-Origin-Resource-Policy` is now `same-origin` (ZAP treats `same-site` as weaker; only no-cors loads are affected and the console uses CORS fetch); regression test |
 | Fuzzing (CI run) | one request deleted a webhook while another updated it: `StaleDataError` → 500 | concurrent modification answers 409 *conflict* (no SQL details); regression test |
 | Fuzzing (CI run) | "Send test" and "Retry" still called out when `AUTOMATION_DELIVERY_ENABLED=false`, so scanners could make the server contact arbitrary public hosts | switched-off deliveries send nothing from any path; regression test |
+| Fuzzing (CI run, Phase 10) | the indicator watchlist accepted `"0"` as a domain, and two requests adding the same indicator at once hit the unique index (500) | values are validated per type (IP, domain, URL, e-mail, hash); a concurrent duplicate updates the existing entry; regression tests |
 
 **Reviewed and accepted (Low)**
 
@@ -207,6 +208,20 @@ Run on v0.9.0 (2026-11-25). The automated parts run in CI on every push.
 
 **Phase 9 hardening also added:** Redis-backed rate limits with hashed keys (no client addresses
 stored in Redis) and a per-instance fallback; a query-budget test against N+1 regressions.
+
+## Phase 10 additions: accounts, e-mail and operations
+
+| Threat | Example | Control (implemented, tested) |
+|---|---|---|
+| Account takeover via reset links | a leaked or guessed reset link | 256-bit random tokens, only SHA-256 stored, single use, 30 min expiry, a newer link cancels older ones, the reset ends every session |
+| Token leakage in transit | links in proxy logs or `Referer` headers | tokens travel in the URL fragment (`#token=`), which browsers never send to servers; pages remove it from the address bar after use |
+| Account enumeration | "forgot password" revealing who has an account | identical answer for every address (and identical "not configured" answer when e-mail is off); per-address mail cap |
+| Mail bombing | thousands of reset mails to one person | per-IP auth rate limit + `RATE_LIMIT_EMAIL_PER_HOUR` per address |
+| Invitation abuse | forwarding an invitation, inviting into a higher role | invitations are bound to the invited address, single use, expire, can be revoked; nobody can invite above their own role |
+| Unwanted sign-ups | strangers creating accounts on a company deployment | `REGISTRATION_MODE=invite_only` or `domains`; only the first account of an empty installation bypasses it |
+| Unsafe production config | console e-mail backend printing links to logs, `http://` links | the API refuses to start in production with `EMAIL_BACKEND=console`, a non-https `PUBLIC_APP_URL` or a short `METRICS_TOKEN` |
+| Metrics leaking data | IDs, e-mails or paths in monitoring | `/metrics` is invisible (404) without the bearer token and labels only route templates |
+| Silent background failure | the sweeper or automation loop dying | `/api/v1/health/ready` answers 503 when a loop has not run in 3 intervals; uptime monitors alert |
 
 ## Phase 9 additions: Research Lab
 

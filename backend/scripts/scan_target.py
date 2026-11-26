@@ -50,6 +50,8 @@ def throwaway_api(**extra_env: str) -> Iterator[Target]:
         "RATE_LIMIT_ENABLED": "false",
         "INTEL_OFFLINE": "true",
         "AUTOMATION_DELIVERY_ENABLED": "false",
+        # Scanners exercise the real e-mail flows; the console backend only writes to this log.
+        "EMAIL_BACKEND": "console",
         "LOG_LEVEL": "WARNING",
         "ACCESS_TOKEN_TTL_MINUTES": "180",  # long scans must not lose their session
         "NO_PROXY": "127.0.0.1,localhost",

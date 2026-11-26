@@ -160,6 +160,14 @@ published rules over the organization's own data. No AI model is used.
 | Promote a lab rule to live detection | ⬜ | the lab is deliberately read-only towards production today |
 | Realtime fan-out across several API instances (Redis pub/sub) | ⬜ | WebSocket delivery is per instance |
 
-## Phase 10 — Deployment ⬜
+## Phase 10 — Deployment 🟡 (code complete; go-live needs the owner's accounts)
 
-- Live Supabase + Render + Cloudflare deployment, email provider, public registration policy, monitoring
+| Feature | Status | Evidence |
+|---|---|---|
+| E-mail (SMTP; console for development), password reset, address verification | ✅ | `tests/test_accounts.py` |
+| Invitations by e-mail address (or a link shared by hand without e-mail) | ✅ | `tests/test_accounts.py`, e2e `accounts.spec.ts` |
+| Public sign-up policy: open / invite-only / domains, first account bootstrap | ✅ | `test_registration_modes` |
+| Monitoring: `/metrics`, readiness with background loops, production config guards | ✅ | `tests/test_monitoring.py` |
+| Go-live tooling: live verification script, smoke-test workflow, runbook | ✅ | `tests/test_verify_deployment.py`, [GO-LIVE.md](GO-LIVE.md) |
+| Supabase database (migrations, RLS, app role grants) | ✅ | applied to the `sentinel-x` project |
+| API on Render, console on Cloudflare Pages, SMTP provider, uptime monitor | ⬜ | needs the owner's accounts — see [GO-LIVE.md](GO-LIVE.md) |

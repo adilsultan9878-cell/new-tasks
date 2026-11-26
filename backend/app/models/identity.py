@@ -15,6 +15,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     true,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -114,6 +115,47 @@ class OrganizationMember(UUIDPrimaryKey, Timestamps, Base):
     organization: Mapped[Organization] = relationship(back_populates="members")
     user: Mapped[User] = relationship(back_populates="memberships", foreign_keys=[user_id])
     role: Mapped[Role] = relationship(lazy="joined")
+
+
+class EmailToken(UUIDPrimaryKey, Base):
+    """Single-use link token for password reset or e-mail verification. Only its SHA-256 is stored."""
+
+    __tablename__ = "email_tokens"
+    __table_args__ = (
+        UniqueConstraint("token_hash"),
+        CheckConstraint(in_values("purpose", ("reset", "verify")), name="purpose"),
+        Index("ix_email_tokens_user", "user_id", "purpose"),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    purpose: Mapped[str] = mapped_column(String(16))
+    token_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    expires_at: Mapped[datetime]
+    used_at: Mapped[datetime | None]
+
+
+class Invitation(UUIDPrimaryKey, Base):
+    """An invitation to join an organization, sent to an e-mail address (account optional)."""
+
+    __tablename__ = "invitations"
+    __table_args__ = (
+        UniqueConstraint("token_hash"),
+        Index("ix_invitations_org", "organization_id", "accepted_at"),
+        Index("ix_invitations_email", "email"),
+    )
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
+    email: Mapped[str] = mapped_column(String(320))
+    role_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("roles.id", ondelete="CASCADE"))
+    token_hash: Mapped[str] = mapped_column(String(64))
+    invited_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    emailed: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    expires_at: Mapped[datetime]
+    accepted_at: Mapped[datetime | None]
+    accepted_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    revoked_at: Mapped[datetime | None]
 
 
 class UserSession(UUIDPrimaryKey, Base):

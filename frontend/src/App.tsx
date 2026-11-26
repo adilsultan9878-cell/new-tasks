@@ -17,6 +17,10 @@ import { BrainPage } from '@/pages/brain/BrainPage'
 import { RunPage } from '@/pages/brain/RunPage'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
+import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
+import { InvitePage } from '@/pages/auth/InvitePage'
+import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
+import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
 import { SettingsPage } from '@/pages/account/SettingsPage'
 import { CommandCenterPage } from '@/pages/dashboard/CommandCenterPage'
 import { DevicesPage } from '@/pages/devices/DevicesPage'
@@ -55,8 +59,13 @@ export const routes = [
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
     ],
   },
+  // Links from e-mails work whether or not someone is signed in.
+  { path: '/reset-password', element: <ResetPasswordPage /> },
+  { path: '/verify-email', element: <VerifyEmailPage /> },
+  { path: '/invite', element: <InvitePage /> },
   {
     element: <RequireAuth />,
     children: [

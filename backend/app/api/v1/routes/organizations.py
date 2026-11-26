@@ -20,7 +20,7 @@ from app.schemas.organizations import (
     RoleOut,
     RoleWithPermissions,
 )
-from app.services import audit
+from app.services import accounts, audit
 from app.services import organizations as org_service
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
@@ -61,6 +61,7 @@ def list_my_organizations(principal: CurrentPrincipal, db: DB) -> list[Membershi
 def create_organization(
     body: OrganizationCreate, principal: CurrentPrincipal, request: Request, db: DB
 ) -> MembershipOut:
+    accounts.require_verified(principal.user)
     member = org_service.create_organization(
         db,
         request,

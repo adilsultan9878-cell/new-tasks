@@ -997,3 +997,38 @@ export interface LabReproduction {
   checks: Record<string, boolean>
   engine_version: string
 }
+
+// ------------------------------------------------------------------- accounts (Phase 10)
+export interface AuthPolicy {
+  registration: 'open' | 'invite_only' | 'domains'
+  first_account: boolean
+  allowed_domains: string[]
+  password_reset: boolean
+  email_verification: boolean
+  email_verification_required: boolean
+}
+
+export interface Invitation {
+  id: string
+  email: string
+  role: { key: string; name: string; description: string | null; rank: number }
+  invited_by_name: string | null
+  emailed: boolean
+  created_at: string
+  expires_at: string
+  status: 'pending' | 'expired'
+}
+
+export interface InvitationCreated {
+  invitation: Invitation
+  link: string | null
+}
+
+export interface InvitationInfo {
+  organization_name: string
+  role: string
+  email: string
+  email_hint: string
+  expires_at: string
+  account_exists: boolean
+}

@@ -21,6 +21,29 @@ services:
         value: "false"
       - key: JWT_SECRET
         generateValue: true
+      # --- Phase 10: accounts, e-mail, monitoring (see docs/GO-LIVE.md) ---
+      - key: PUBLIC_APP_URL # the console's https:// address; links in e-mails point here
+        sync: false
+      - key: EMAIL_BACKEND # smtp to send password-reset, verification and invitation e-mails; disabled = off
+        value: disabled
+      - key: EMAIL_FROM # e.g. SENTINEL X <alerts@your-domain>
+        sync: false
+      - key: SMTP_HOST # e.g. smtp-relay.brevo.com / smtp.resend.com
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: REGISTRATION_MODE # open | invite_only | domains
+        value: invite_only
+      - key: ALLOWED_EMAIL_DOMAINS # for REGISTRATION_MODE=domains, e.g. your-company.com
+        sync: false
+      - key: REQUIRE_EMAIL_VERIFICATION
+        value: "false"
+      - key: METRICS_TOKEN # Bearer token for GET /metrics (Prometheus / Grafana Cloud)
+        generateValue: true
       - key: REDIS_URL # optional: shared rate limits for several instances (Render Key Value / Upstash); empty = per instance
         sync: false
       - key: AUTOMATION_SIGNING_KEY # master key for webhook signing secrets (Phase 8); never share it

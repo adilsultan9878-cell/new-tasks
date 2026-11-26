@@ -1,0 +1,35 @@
+# Checks a live deployment from the outside (read-only): health, RLS, headers, CORS, proxy.
+# Run it by hand after a deploy, or set the repository variables SENTINEL_API_URL and
+# SENTINEL_CONSOLE_URL to also run it every morning.
+name: Live smoke test
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: API base URL (https://<service>.onrender.com)
+        required: true
+      console_url:
+        description: Console URL (https://<project>.pages.dev)
+        required: true
+  schedule:
+    - cron: "17 6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.event_name == 'workflow_dispatch' || vars.SENTINEL_API_URL != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install httpx==0.28.1
+      - name: Verify the deployment
+        env:
+          API_URL: ${{ inputs.api_url || vars.SENTINEL_API_URL }}
+          CONSOLE_URL: ${{ inputs.console_url || vars.SENTINEL_CONSOLE_URL }}
+        run: python backend/scripts/verify_deployment.py --api "$API_URL" --console "$CONSOLE_URL" --timeout 90

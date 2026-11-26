@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import ipaddress
+import re
 import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from app.schemas.common import APIModel
 
@@ -57,11 +59,38 @@ class IndicatorOut(APIModel):
     context: dict[str, Any]
 
 
+_DOMAIN = re.compile(r"^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
+_HEX = {"md5": 32, "sha1": 40, "sha256": 64}
+
+
 class IndicatorCreate(APIModel):
     indicator_type: IndicatorType
     value: str = Field(min_length=1, max_length=2048)
     verdict: Literal["benign", "suspicious", "malicious"] = "malicious"
     note: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def _value_matches_type(self) -> IndicatorCreate:
+        """A watchlist entry must be what its type says (found by fuzzing: "0" was a "domain")."""
+        v = self.value.strip().lower()
+        t = self.indicator_type
+        ok = False
+        if t in ("ipv4", "ipv6"):
+            try:
+                ok = ipaddress.ip_address(v).version == (4 if t == "ipv4" else 6)
+            except ValueError:
+                ok = False
+        elif t == "domain":
+            ok = bool(_DOMAIN.match(v))
+        elif t == "url":
+            ok = v.startswith(("http://", "https://")) and len(v) > 10
+        elif t == "email":
+            ok = bool(re.fullmatch(r"[^@\s]{1,64}@[^@\s]{3,253}", v))
+        else:
+            ok = bool(re.fullmatch(rf"[0-9a-f]{{{_HEX[t]}}}", v))
+        if not ok:
+            raise ValueError(f"value is not a valid {t}")
+        return self
 
 
 class ProviderOut(APIModel):

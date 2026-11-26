@@ -13,6 +13,7 @@ from starlette.types import ASGIApp
 from app import __version__
 from app.api.v1.health_alias import router as root_health_router
 from app.api.v1.router import api_router
+from app.api.v1.routes.health import metrics_router
 from app.core.config import get_settings
 from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging
@@ -93,6 +94,7 @@ def create_app() -> FastAPI:
         max_age=600,
     )
     app.include_router(root_health_router)
+    app.include_router(metrics_router)
     app.include_router(api_router, prefix=settings.api_prefix)
     return app
 

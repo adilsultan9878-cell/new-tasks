@@ -11,7 +11,7 @@ interface AuthState {
   status: Status
   user: User | null
   login: (email: string, password: string) => Promise<User>
-  register: (input: { email: string; password: string; full_name: string }) => Promise<User>
+  register: (input: { email: string; password: string; full_name: string; invitation_token?: string }) => Promise<User>
   logout: () => Promise<void>
   setUser: (user: User) => void
 }
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const register = useCallback(
-    async (input: { email: string; password: string; full_name: string }) =>
+    async (input: { email: string; password: string; full_name: string; invitation_token?: string }) =>
       accept(await api<TokenResponse>('/auth/register', { method: 'POST', body: input, auth: false })),
     [accept],
   )

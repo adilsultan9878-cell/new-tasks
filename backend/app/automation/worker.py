@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.automation import delivery, engine
 from app.core.config import get_settings
+from app.core.metrics import registry
 from app.db.session import get_sessionmaker, set_tenant_context
 from app.models import Organization
 from app.soc.common import now
@@ -54,5 +55,7 @@ async def run_forever() -> None:
         await asyncio.sleep(interval)
         try:
             await run_in_threadpool(tick)
+            registry.job_ok("automation")
         except Exception:
+            registry.job_failed("automation")
             log.exception("automation worker failed")

@@ -2,6 +2,8 @@
 
 from app.models.identity import (
     AuditLog,
+    EmailToken,
+    Invitation,
     Notification,
     Organization,
     OrganizationMember,
@@ -54,12 +56,14 @@ __all__ = [
     "Camera",
     "CameraSnapshot",
     "Device",
+    "EmailToken",
     "EnrollmentToken",
     "Evidence",
     "EvidenceBlob",
     "Incident",
     "Integration",
     "Investigation",
+    "Invitation",
     "LabDataset",
     "LabExperiment",
     "NetworkAsset",

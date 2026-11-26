@@ -45,9 +45,7 @@ def normalize_email(email: str) -> str:
 
 
 def register(db: Session, request: Request, *, email: str, password: str, full_name: str) -> User:
-    settings = get_settings()
-    if not settings.allow_registration:
-        raise AppError(status.HTTP_403_FORBIDDEN, "registration_closed", "Registration is disabled")
+    # Who may sign up (open / invite-only / domains) is checked by accounts.check_registration.
     email = normalize_email(email)
     problems = password_problems(password, email)
     if problems:

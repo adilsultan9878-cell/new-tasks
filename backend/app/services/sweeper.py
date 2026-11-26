@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.automation import engine as automation
 from app.core.config import get_settings
+from app.core.metrics import registry
 from app.db.session import get_sessionmaker, set_tenant_context
 from app.models import CameraSnapshot, Device, Organization, SecurityEvent, SensorReading
 from app.services import realtime
@@ -122,5 +123,7 @@ async def run_forever() -> None:
         try:
             await run_in_threadpool(sweep_offline_devices)
             await run_in_threadpool(purge_expired_data)
+            registry.job_ok("sweeper")
         except Exception:
+            registry.job_failed("sweeper")
             log.exception("device sweep failed")
