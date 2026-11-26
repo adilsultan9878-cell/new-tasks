@@ -423,6 +423,13 @@ def test_fuzzer_findings_stay_fixed(fleet):
     assert (
         fleet.owner.patch(f"{o}/sensors/{sensor['id']}", json={"unit": None}).status_code == 200
     )  # nullable column
+    for bad in (
+        {"indicator_type": "domain", "value": "0"},
+        {"indicator_type": "ipv4", "value": "::1"},
+        {"indicator_type": "sha256", "value": "abc"},
+        {"indicator_type": "url", "value": "javascript:x"},
+    ):
+        assert fleet.owner.post(f"{o}/indicators", json=bad).status_code == 422, bad
     for path in ("/automation/runs", "/automation/deliveries", "/events", "/audit-logs"):
         assert fleet.owner.get(f"{o}{path}", params={"offset": 9223372036854775808}).status_code == 422
 

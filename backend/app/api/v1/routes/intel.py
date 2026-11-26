@@ -9,6 +9,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import DB, CurrentPrincipal, OrgContext, require
 from app.core.errors import AppError, not_found
@@ -153,14 +154,32 @@ def add_indicator(
         )
     )
     if row is None:
-        row = ThreatIndicator(
+        candidate = ThreatIndicator(
             id=uuid.uuid4(),
             organization_id=ctx.org_id,
             indicator_type=body.indicator_type,
             value=value,
+            source="analyst",
+            verdict=body.verdict,
+            confidence=100,
+            is_verified=True,
             context={},
         )
-        db.add(row)
+        try:
+            with db.begin_nested():
+                db.add(candidate)
+                db.flush()
+            row = candidate
+        except IntegrityError:  # added at the same moment by another request: update that one
+            row = db.scalar(
+                select(ThreatIndicator).where(
+                    ThreatIndicator.organization_id == ctx.org_id,
+                    ThreatIndicator.indicator_type == body.indicator_type,
+                    ThreatIndicator.value == value,
+                )
+            )
+            if row is None:
+                raise
     row.source = "analyst"
     row.verdict = body.verdict
     row.confidence = 100

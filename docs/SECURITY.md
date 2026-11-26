@@ -197,6 +197,7 @@ Run on v0.9.0 (2026-11-25). The automated parts run in CI on every push.
 | DAST (CI run) | CORS preflight answers and early 413s came from middleware outside the application and missed the security headers (ZAP: *Cross-Origin-Resource-Policy missing*, Low) | an outermost ASGI layer adds the headers to every response, and `Cross-Origin-Resource-Policy` is now `same-origin` (ZAP treats `same-site` as weaker; only no-cors loads are affected and the console uses CORS fetch); regression test |
 | Fuzzing (CI run) | one request deleted a webhook while another updated it: `StaleDataError` → 500 | concurrent modification answers 409 *conflict* (no SQL details); regression test |
 | Fuzzing (CI run) | "Send test" and "Retry" still called out when `AUTOMATION_DELIVERY_ENABLED=false`, so scanners could make the server contact arbitrary public hosts | switched-off deliveries send nothing from any path; regression test |
+| Fuzzing (CI run, Phase 10) | the indicator watchlist accepted `"0"` as a domain, and two requests adding the same indicator at once hit the unique index (500) | values are validated per type (IP, domain, URL, e-mail, hash); a concurrent duplicate updates the existing entry; regression tests |
 
 **Reviewed and accepted (Low)**
 
