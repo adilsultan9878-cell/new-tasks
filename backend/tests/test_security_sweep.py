@@ -35,9 +35,11 @@ PUBLIC_2XX = {
     ("GET", f"{API}/health"),
     ("GET", f"{API}/health/ready"),
     ("POST", f"{API}/auth/logout"),  # idempotent: clears the cookie even when there is none
+    ("GET", f"{API}/auth/policy"),  # who may sign up: needed by the sign-up page before any login
 }
 # Routes authenticated by something other than a user session; they must still refuse anonymous calls.
-NON_USER_AUTH = {f"{API}/agent/", f"{API}/hooks/"}
+# (Invitation lookup is authenticated by the single-use invitation token in the body.)
+NON_USER_AUTH = {f"{API}/agent/", f"{API}/hooks/", f"{API}/invitations/lookup"}
 
 
 def _routes() -> list[tuple[str, str]]:

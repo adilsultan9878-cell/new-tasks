@@ -14,6 +14,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import get_settings
 from app.core.logging import request_id_ctx
+from app.core.metrics import registry
 from app.core.rate_limit import client_ip, limiter
 
 log = logging.getLogger("sentinel.http")
@@ -102,6 +103,16 @@ def install_middleware(app: FastAPI) -> None:
                 response = await call_next(request)
 
             response.headers["X-Request-ID"] = request_id  # security headers: SecurityHeadersMiddleware
+            route = request.scope.get("route")
+            template = getattr(route, "path_format", None) or getattr(route, "path", None) or "unmatched"
+            prefix = settings.api_prefix
+            if (
+                request.url.path.startswith(prefix)
+                and template.startswith("/")
+                and not template.startswith(prefix)
+            ):
+                template = prefix + template  # included routers report paths relative to the prefix
+            registry.observe(request.method, template, response.status_code, time.perf_counter() - started)
             log.info(
                 "request",
                 extra={

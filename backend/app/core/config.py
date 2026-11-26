@@ -132,6 +132,33 @@ class Settings(BaseSettings):
     rate_limit_hooks_per_minute: int = 60  # per incoming-hook workflow and client address
     signature_tolerance_seconds: int = Field(default=300, ge=30, le=3600)  # replay window
 
+    # --- Accounts, e-mail and registration (Phase 10) ----------------------------------------
+    # Base URL of the web console: links in e-mails point here (https:// in production).
+    public_app_url: str = "http://localhost:5173"
+    # disabled: no e-mail (password reset and verification are switched off, honestly reported)
+    # console: development only — e-mails are written to the API log
+    # smtp: any provider with SMTP (Brevo, Resend, Mailgun, SES, Gmail with an app password, ...)
+    email_backend: Literal["disabled", "console", "smtp"] = "disabled"
+    email_from: str = "SENTINEL X <no-reply@localhost>"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = Field(default="", repr=False)
+    smtp_security: Literal["starttls", "ssl", "none"] = "starttls"
+    smtp_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
+    # open: anyone may sign up · invite_only: only with an invitation · domains: only the listed
+    # e-mail domains (or with an invitation). ALLOW_REGISTRATION=false is the same as invite_only.
+    registration_mode: Literal["open", "invite_only", "domains"] = "open"
+    allowed_email_domains: Annotated[list[str], NoDecode] = []
+    require_email_verification: bool = False  # verified e-mail needed to create an organization
+    password_reset_ttl_minutes: int = Field(default=30, ge=5, le=1440)
+    email_verification_ttl_hours: int = Field(default=48, ge=1, le=720)
+    invitation_ttl_days: int = Field(default=7, ge=1, le=30)
+    rate_limit_email_per_hour: int = Field(default=5, ge=1, le=100)  # reset/verify mails per address
+
+    # --- Monitoring (Phase 10) ---------------------------------------------------------------
+    metrics_token: str = Field(default="", repr=False)  # set to enable GET /metrics (Bearer token)
+
     # --- Realtime ----------------------------------------------------------------------------
     ws_auth_timeout_seconds: int = 10
     ws_ping_interval_seconds: int = 25
@@ -141,6 +168,13 @@ class Settings(BaseSettings):
     @classmethod
     def _normalize_db_url(cls, value: str | None) -> str | None:
         return normalize_database_url(value) if value else value
+
+    @field_validator("allowed_email_domains", mode="before")
+    @classmethod
+    def _split_domains(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [d.strip().lower().lstrip("@") for d in value.split(",") if d.strip()]
+        return value
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -160,13 +194,33 @@ class Settings(BaseSettings):
                 raise ValueError("SQLite is for local development only; set a PostgreSQL DATABASE_URL")
             if not self.refresh_cookie_secure:
                 raise ValueError("REFRESH_COOKIE_SECURE must be true in production")
+            if self.email_backend == "console":
+                raise ValueError(
+                    "EMAIL_BACKEND=console writes e-mails (with their links) to the log; use smtp"
+                )
+            if not self.public_app_url.startswith("https://"):
+                raise ValueError("PUBLIC_APP_URL must be the https:// address of the console in production")
+            if self.metrics_token and len(self.metrics_token) < 24:
+                raise ValueError("METRICS_TOKEN must be at least 24 characters")
             if self.automation_signing_key and len(self.automation_signing_key) < 32:
                 raise ValueError("AUTOMATION_SIGNING_KEY must be at least 32 characters")
             if "*" in self.cors_origins:
                 raise ValueError("Wildcard CORS origins are not allowed with credentialed requests")
+        if self.email_backend == "smtp" and not self.smtp_host:
+            raise ValueError("EMAIL_BACKEND=smtp needs SMTP_HOST")
+        if self.registration_mode == "domains" and not self.allowed_email_domains:
+            raise ValueError("REGISTRATION_MODE=domains needs ALLOWED_EMAIL_DOMAINS")
         if self.refresh_cookie_samesite == "none" and not self.refresh_cookie_secure:
             raise ValueError("REFRESH_COOKIE_SAMESITE=none requires REFRESH_COOKIE_SECURE=true")
         return self
+
+    @property
+    def effective_registration_mode(self) -> str:
+        return "invite_only" if not self.allow_registration else self.registration_mode
+
+    @property
+    def email_enabled(self) -> bool:
+        return self.email_backend != "disabled"
 
     @property
     def is_sqlite(self) -> bool:

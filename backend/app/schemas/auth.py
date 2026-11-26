@@ -21,6 +21,7 @@ class RegisterRequest(APIModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
     full_name: str = Field(min_length=1, max_length=120)
+    invitation_token: str | None = Field(default=None, max_length=128)  # invite-only sign-up
 
     _n = field_validator("full_name")(_clean_name)
 
@@ -65,3 +66,25 @@ class SessionOut(APIModel):
     ip_address: str | None
     user_agent: str | None
     current: bool = False
+
+
+class PasswordResetRequest(APIModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(APIModel):
+    token: str = Field(min_length=20, max_length=128)
+    password: str = Field(min_length=1, max_length=128)
+
+
+class TokenBody(APIModel):
+    token: str = Field(min_length=20, max_length=128)
+
+
+class AuthPolicy(APIModel):
+    registration: str  # open | invite_only | domains
+    first_account: bool  # empty installation: the first sign-up is allowed whatever the mode
+    allowed_domains: list[str]
+    password_reset: bool
+    email_verification: bool
+    email_verification_required: bool

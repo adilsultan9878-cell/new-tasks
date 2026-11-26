@@ -112,3 +112,33 @@ class MemberAdd(APIModel):
 
 class MemberUpdate(APIModel):
     role: str
+
+
+class InvitationCreate(APIModel):
+    email: EmailStr
+    role: str = "viewer"
+
+
+class InvitationOut(APIModel):
+    id: uuid.UUID
+    email: str
+    role: RoleOut
+    invited_by_name: str | None = None
+    emailed: bool
+    created_at: datetime
+    expires_at: datetime
+    status: str  # pending | expired
+
+
+class InvitationCreated(APIModel):
+    invitation: InvitationOut
+    link: str | None = None  # only when e-mail is not configured: pass it on yourself (shown once)
+
+
+class InvitationInfo(APIModel):
+    organization_name: str
+    role: str
+    email: str
+    email_hint: str
+    expires_at: datetime
+    account_exists: bool

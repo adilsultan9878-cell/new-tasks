@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, Request, Response, status
 from sqlalchemy import select
 
 from app.api.deps import DB, CurrentPrincipal
@@ -12,16 +12,20 @@ from app.core.errors import AppError
 from app.core.rate_limit import auth_rate_limit, enforce, refresh_rate_limit
 from app.models import User, UserSession
 from app.schemas.auth import (
+    AuthPolicy,
     ChangePasswordRequest,
     LoginRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
     RegisterRequest,
     SessionOut,
+    TokenBody,
     TokenResponse,
     UpdateProfileRequest,
     UserOut,
 )
 from app.schemas.common import Message
-from app.services import audit
+from app.services import accounts, audit
 from app.services import auth as auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -86,14 +90,65 @@ def _refresh_cookie(request: Request) -> str | None:
 @router.post(
     "/register", response_model=TokenResponse, status_code=201, dependencies=[Depends(auth_rate_limit)]
 )
-def register(body: RegisterRequest, request: Request, response: Response, db: DB) -> TokenResponse:
+def register(
+    body: RegisterRequest, request: Request, response: Response, db: DB, background: BackgroundTasks
+) -> TokenResponse:
+    invitation = accounts.check_registration(db, body.email, body.invitation_token)
     user = auth_service.register(
         db, request, email=body.email, password=body.password, full_name=body.full_name
     )
     user.last_login_at = datetime.now(UTC)
+    if invitation is not None and body.invitation_token:
+        accounts.accept(db, request, user, body.invitation_token)  # joins the inviting organization
+    else:
+        accounts.send_verification(db, request, background, user)
     session, raw = auth_service.start_session(db, request, user)
     db.commit()
     return _token_response(response, user, session, raw)
+
+
+@router.get("/policy", response_model=AuthPolicy, summary="Who may sign up and which e-mail features exist")
+def auth_policy(db: DB) -> AuthPolicy:
+    return AuthPolicy(**accounts.policy(db))
+
+
+@router.post(
+    "/password-reset/request",
+    response_model=Message,
+    status_code=202,
+    dependencies=[Depends(auth_rate_limit)],
+)
+def password_reset_request(
+    body: PasswordResetRequest, request: Request, db: DB, background: BackgroundTasks
+) -> Message:
+    accounts.request_reset(db, request, background, body.email)
+    db.commit()
+    return Message(message="If an account exists for that address, a reset link is on its way.")
+
+
+@router.post("/password-reset/confirm", response_model=Message, dependencies=[Depends(auth_rate_limit)])
+def password_reset_confirm(body: PasswordResetConfirm, request: Request, db: DB) -> Message:
+    accounts.confirm_reset(db, request, body.token, body.password)
+    db.commit()
+    return Message(message="Password changed. Sign in with the new password.")
+
+
+@router.post("/verify-email/request", response_model=Message, dependencies=[Depends(auth_rate_limit)])
+def verify_email_request(
+    principal: CurrentPrincipal, request: Request, db: DB, background: BackgroundTasks
+) -> Message:
+    if not get_settings().email_enabled:
+        raise accounts.EMAIL_OFF
+    sent = accounts.send_verification(db, request, background, principal.user)
+    db.commit()
+    return Message(message="Confirmation link sent." if sent else "Your address is already confirmed.")
+
+
+@router.post("/verify-email/confirm", response_model=UserOut, dependencies=[Depends(auth_rate_limit)])
+def verify_email_confirm(body: TokenBody, request: Request, db: DB) -> UserOut:
+    user = accounts.confirm_verification(db, request, body.token)
+    db.commit()
+    return user_out(user)
 
 
 @router.post("/login", response_model=TokenResponse, dependencies=[Depends(auth_rate_limit)])
