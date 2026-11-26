@@ -100,7 +100,8 @@ def upgrade() -> None:
             CREATE OR REPLACE FUNCTION lab_immutable() RETURNS trigger LANGUAGE plpgsql
             SET search_path = '' AS $$
             BEGIN
-                RAISE EXCEPTION 'research lab records are immutable (%)', TG_TABLE_NAME;
+                -- built by concatenation: a format placeholder would be doubled by offline (--sql) rendering
+                RAISE EXCEPTION USING MESSAGE = 'research lab records are immutable (' || TG_TABLE_NAME || ')';
             END $$;
             CREATE TRIGGER lab_datasets_immutable BEFORE UPDATE ON lab_datasets
                 FOR EACH ROW EXECUTE FUNCTION lab_immutable();
