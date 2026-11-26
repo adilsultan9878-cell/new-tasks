@@ -10,6 +10,7 @@ import type { Membership } from '@/lib/types'
 import { CommandPalette } from './CommandPalette'
 import { Notifications } from './Notifications'
 import { Sidebar } from './Sidebar'
+import { VerifyEmailBanner } from './VerifyEmailBanner'
 import { UserMenu } from './UserMenu'
 
 export function AppShell({ memberships }: { memberships: Membership[] }) {
@@ -94,6 +95,7 @@ export function AppShell({ memberships }: { memberships: Membership[] }) {
           </div>
         </header>
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:py-8">
+          <VerifyEmailBanner />
           <Outlet />
         </main>
       </div>

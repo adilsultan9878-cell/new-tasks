@@ -227,7 +227,18 @@ on sub-domains of one custom domain (`app.example.com` / `api.example.com`, `Sam
 | `REFRESH_COOKIE_SECURE` | `false` | must be `true` in production |
 | `REFRESH_COOKIE_SAMESITE` | `lax` | `none` only for cross-site direct API calls |
 | `CORS_ORIGINS` | `http://localhost:5173,…` | comma-separated, no wildcards |
-| `ALLOW_REGISTRATION` | `true` | set `false` for invite-only deployments |
+| `ALLOW_REGISTRATION` | `true` | `false` = the same as `REGISTRATION_MODE=invite_only` |
+| `REGISTRATION_MODE` | `open` | `open`, `invite_only` or `domains`; the first account of an empty installation may always sign up |
+| `ALLOWED_EMAIL_DOMAINS` | — | comma-separated, for `REGISTRATION_MODE=domains` |
+| `REQUIRE_EMAIL_VERIFICATION` | `false` | confirmed e-mail needed before creating an organization |
+| `PUBLIC_APP_URL` | `http://localhost:5173` | console address used in e-mail links; must be `https://` in production |
+| `EMAIL_BACKEND` | `disabled` | `smtp` to send mail; `console` (development only) writes mails to the log |
+| `EMAIL_FROM` | `SENTINEL X <no-reply@localhost>` | sender address (verified with your provider) |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURITY` | — / `587` / `starttls` | `ssl` for port 465, `none` only for a local relay |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | — | from your e-mail provider (secret) |
+| `PASSWORD_RESET_TTL_MINUTES` / `EMAIL_VERIFICATION_TTL_HOURS` / `INVITATION_TTL_DAYS` | `30` / `48` / `7` | link lifetimes |
+| `RATE_LIMIT_EMAIL_PER_HOUR` | `5` | reset / verification mails per address per hour |
+| `METRICS_TOKEN` | — | enables `GET /metrics` for `Authorization: Bearer <token>` (≥ 24 characters) |
 | `RATE_LIMIT_AUTH_PER_MINUTE` | `10` | login/register/password change, per IP & path |
 | `RATE_LIMIT_REFRESH_PER_MINUTE` | `120` | per IP |
 | `RATE_LIMIT_DEFAULT_PER_MINUTE` | `300` | all `/api` traffic, per IP |
@@ -309,4 +320,6 @@ computer next to the broker (see `agent/README.md`). Anonymous MQTT clients are 
 - [ ] Database backups enabled; restore tested
 - [ ] Uptime monitor on `/health` (also keeps a free Render instance warm, within the provider's terms)
 - [ ] Custom domain with HTTPS for the console
-- [ ] Email provider configured before enabling password reset / invitations (Phase 10)
+- [ ] E-mail provider configured (`EMAIL_BACKEND=smtp`) — or invitation links shared by hand
+- [ ] `PUBLIC_APP_URL` is the console's `https://` address; `REGISTRATION_MODE` chosen
+- [ ] Uptime monitor on `/api/v1/health/ready`; `verify_deployment.py` passes (see [GO-LIVE.md](GO-LIVE.md))

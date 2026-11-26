@@ -112,6 +112,8 @@ erDiagram
 |---|---|---|---|
 | Identity | `users` | accounts, lockout state | — |
 | | `user_sessions` | refresh-token sessions with rotation families | — (user) |
+| | `email_tokens` | single-use password-reset and verification tokens (SHA-256 only) | — (user) |
+| | `invitations` | invitations to an organization by e-mail address (token hash, role, expiry) | — (org, API context) |
 | Tenancy | `organizations` | tenants | — |
 | | `organization_members` | user ↔ org with role (unique per pair) | scoped in the API (RLS: `api_access`) |
 | RBAC | `roles`, `permissions`, `role_permissions` | system roles (org-specific roles reserved) | — |
@@ -200,6 +202,7 @@ applied through Supabase's SQL Editor when there is no direct connection.
 | `0002` | device enrollment tokens and event-ingestion columns |
 | `0003` | network scopes, investigation timeline/details, intel and network permissions |
 | `0004` | pinned `search_path` on the RLS helper and audit trigger functions |
+| `0010` | Accounts: `email_tokens` (reset / verification, hashes only) and `invitations` (API-context RLS) |
 | `0009` | Research Lab: `lab_datasets` and `lab_experiments` (RLS, immutability trigger), `lab:read` / `lab:run` permissions |
 | `0008` | Automation: `automation_runs` and `webhook_deliveries` (RLS), workflow steps / inbound secret version / next run / last status, integration secret version / failure count / last error, status and trigger CHECKs, `automation:read` permission |
 | — | Phase 7 (Digital Twin) needs no migration: rooms live in `organizations.settings`, positions in `devices.location` |

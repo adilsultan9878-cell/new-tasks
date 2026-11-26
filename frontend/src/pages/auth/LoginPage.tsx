@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/auth/AuthContext'
+import { useAuthPolicy } from '@/auth/policy'
 import { Button } from '@/components/ui/Button'
 import { ErrorNotice } from '@/components/ui/Feedback'
 import { Field, Input, PasswordInput } from '@/components/ui/Field'
@@ -17,6 +18,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<unknown>(null)
   const [submitting, setSubmitting] = useState(false)
+  const policy = useAuthPolicy()
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -54,7 +56,8 @@ export function LoginPage() {
             <Input id={id} aria-describedby={describedBy} invalid={invalid} type="email" autoComplete="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
           )}
         </Field>
-        <Field label="Password" error={fieldErr?.fieldError('password')}>
+        <Field label="Password" error={fieldErr?.fieldError('password')}
+          labelAside={policy.data?.password_reset ? <Link to="/forgot-password" className="text-xs text-accent hover:underline">Forgot password?</Link> : undefined}>
           {({ id, describedBy, invalid }) => (
             <PasswordInput id={id} aria-describedby={describedBy} invalid={invalid} autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           )}

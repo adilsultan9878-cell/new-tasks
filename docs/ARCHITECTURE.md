@@ -264,6 +264,20 @@ flowchart LR
 * **Loop guard:** a context flag marks code running inside a workflow; events it causes do not
   trigger workflows, so SENTINEL X and n8n cannot ping-pong.
 
+## 6f. Accounts and operations (implemented — Phase 10)
+
+* **E-mail** (`app/services/email.py`): `disabled` / `console` (development) / `smtp`; messages
+  are sent after the response and never stored, because their links carry single-use tokens.
+* **Link tokens** (`email_tokens`): password reset and address verification; only SHA-256 hashes,
+  single use, short expiry. **Invitations** (`invitations`): bound to an address and a role,
+  accepted by signing up with the token or by signing in with that address. Both tables are
+  identity tables behind the `api_access` RLS policy, like `user_sessions`.
+* **Sign-up policy**: `open` / `invite_only` / `domains`, public at `GET /auth/policy` so the
+  console can show the right page; the first account of an empty installation may always sign up.
+* **Operations**: `GET /metrics` (Prometheus text, bearer token, route templates only),
+  `/api/v1/health/ready` (database + RLS posture, background loops, rate-limit store),
+  `scripts/verify_deployment.py` and the *Live smoke test* workflow for the deployed stack.
+
 ## 6e. Research Lab (implemented — Phase 9)
 
 The lab answers "would this rule have been better than what we run today?" without touching

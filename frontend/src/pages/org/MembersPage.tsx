@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Minus, Trash2, UserPlus, Users } from 'lucide-react'
+import { Check, Mail, Minus, Trash2, UserPlus, Users } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -15,7 +15,7 @@ import { Field, Input, Select } from '@/components/ui/Field'
 import { Panel } from '@/components/ui/Panel'
 import { api, ApiError } from '@/lib/api'
 import { relativeTime } from '@/lib/format'
-import type { Member, RoleWithPermissions } from '@/lib/types'
+import type { Invitation, InvitationCreated, Member, RoleWithPermissions } from '@/lib/types'
 import { useOrg } from '@/org/OrgContext'
 import { qk } from '@/org/queries'
 
@@ -26,6 +26,7 @@ export function MembersPage() {
   const queryClient = useQueryClient()
   const manage = can('members:manage')
   const [adding, setAdding] = useState(false)
+  const [inviting, setInviting] = useState(false)
   const [actionError, setActionError] = useState<unknown>(null)
 
   const members = useQuery({ queryKey: qk.members(orgId), queryFn: () => api<Member[]>(`/organizations/${orgId}/members`) })
@@ -58,7 +59,10 @@ export function MembersPage() {
         eyebrow="Administration"
         title="Users & Roles"
         description="Members of this organization and what each role can do. Nobody can grant a role above their own, and the last owner cannot be removed."
-        actions={manage && <Button variant="primary" icon={<UserPlus className="size-4" />} onClick={() => setAdding(true)}>Add member</Button>}
+        actions={manage && <>
+          <Button variant="ghost" icon={<UserPlus className="size-4" />} onClick={() => setAdding(true)}>Add member</Button>
+          <Button variant="primary" icon={<Mail className="size-4" />} onClick={() => setInviting(true)}>Invite by e-mail</Button>
+        </>}
       />
       {actionError !== null && (
         <div className="mb-4">
@@ -145,8 +149,10 @@ export function MembersPage() {
         )}
       </Panel>
 
+      <PendingInvitations />
       {roles.data && <PermissionMatrix roles={roles.data} />}
       <AddMemberDialog open={adding} onClose={() => setAdding(false)} roles={(roles.data ?? []).filter((r) => r.rank <= myRank)} onAdded={refresh} />
+      {inviting && <InviteDialog onClose={() => setInviting(false)} roles={(roles.data ?? []).filter((r) => r.rank <= myRank)} />}
     </div>
   )
 }
@@ -201,7 +207,7 @@ function AddMemberDialog({ open, onClose, roles, onAdded }: { open: boolean; onC
     add.mutate()
   }
   return (
-    <Dialog open={open} onClose={() => { add.reset(); onClose() }} title="Add member" description="The person must already have a SENTINEL X account. Email invitations arrive with the notification service.">
+    <Dialog open={open} onClose={() => { add.reset(); onClose() }} title="Add member" description="For people who already have a SENTINEL X account. Anyone else: use Invite by e-mail.">
       <form onSubmit={submit} className="space-y-4" noValidate>
         {add.error && !err?.details && <ErrorNotice error={add.error} />}
         <Field label="Email" error={err?.fieldError('email')}>
@@ -223,6 +229,100 @@ function AddMemberDialog({ open, onClose, roles, onAdded }: { open: boolean; onC
           <Button type="submit" variant="primary" loading={add.isPending} disabled={!email.includes('@')}>Add member</Button>
         </div>
       </form>
+    </Dialog>
+  )
+}
+
+function PendingInvitations() {
+  const { orgId, can } = useOrg()
+  const queryClient = useQueryClient()
+  const list = useQuery({ queryKey: ['invitations', orgId], queryFn: () => api<Invitation[]>(`/organizations/${orgId}/invitations`) })
+  const revoke = useMutation({
+    mutationFn: (id: string) => api(`/organizations/${orgId}/invitations/${id}`, { method: 'DELETE' }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['invitations', orgId] }),
+  })
+  if (!list.data?.length) return null
+  return (
+    <Panel className="mt-5" title={`Invitations (${list.data.length})`} description="Waiting to be accepted. Each link works once and only for its address." flush>
+      <ul className="divide-y divide-line">
+        {list.data.map((inv) => (
+          <li key={inv.id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
+            <Mail className="size-4 text-fg-subtle" aria-hidden />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-fg">{inv.email}</span>
+              <span className="block text-xs text-fg-subtle">
+                {inv.role.name} · {inv.invited_by_name ? `by ${inv.invited_by_name} · ` : ''}{inv.status === 'expired' ? 'expired' : `expires ${relativeTime(inv.expires_at)}`}
+                {!inv.emailed && ' · link shared by hand'}
+              </span>
+            </span>
+            {inv.status === 'expired' && <Badge>expired</Badge>}
+            {can('members:manage') && (
+              <Button size="sm" variant="ghost" icon={<Trash2 className="size-3.5" />} loading={revoke.isPending && revoke.variables === inv.id}
+                onClick={() => revoke.mutate(inv.id)} aria-label={`Revoke invitation for ${inv.email}`}>Revoke</Button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  )
+}
+
+function InviteDialog({ onClose, roles }: { onClose: () => void; roles: RoleWithPermissions[] }) {
+  const { orgId } = useOrg()
+  const queryClient = useQueryClient()
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState('viewer')
+  const [copied, setCopied] = useState(false)
+  const invite = useMutation({
+    mutationFn: () => api<InvitationCreated>(`/organizations/${orgId}/invitations`, { method: 'POST', body: { email: email.trim(), role } }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['invitations', orgId] }),
+  })
+  const err = invite.error instanceof ApiError ? invite.error : null
+  const done = invite.data
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+    } catch {
+      /* clipboard blocked: the link stays selectable */
+    }
+  }
+  return (
+    <Dialog open onClose={onClose} title="Invite by e-mail" description="They get a link to join this organization — with a new account or the one they have.">
+      {done ? (
+        <div className="space-y-4" role="status">
+          {done.link ? (
+            <>
+              <p className="text-sm text-fg">E-mail is not set up on this server, so pass this link to <strong>{done.invitation.email}</strong> yourself. It is shown only now.</p>
+              <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg border border-line bg-canvas px-3 py-2 font-mono text-[12px] text-fg">{done.link}</pre>
+              <Button size="sm" variant="ghost" onClick={() => void copy(done.link!)}>{copied ? 'Copied' : 'Copy link'}</Button>
+            </>
+          ) : (
+            <p className="text-sm text-fg">Invitation sent to <strong>{done.invitation.email}</strong>. It works for 7 days.</p>
+          )}
+          <div className="flex justify-end"><Button variant="primary" onClick={onClose}>Done</Button></div>
+        </div>
+      ) : (
+        <form onSubmit={(e: FormEvent) => { e.preventDefault(); invite.mutate() }} className="space-y-4" noValidate>
+          {invite.error && !err?.details && <ErrorNotice error={invite.error} />}
+          <Field label="Email" error={err?.fieldError('email')}>
+            {({ id, describedBy, invalid }) => (
+              <Input id={id} aria-describedby={describedBy} invalid={invalid} type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="colleague@company.com" />
+            )}
+          </Field>
+          <Field label="Role" hint={roles.find((r) => r.key === role)?.description ?? undefined}>
+            {({ id, describedBy }) => (
+              <Select id={id} aria-describedby={describedBy} value={role} onChange={(e) => setRole(e.target.value)}>
+                {roles.map((r) => <option key={r.key} value={r.key}>{r.name}</option>)}
+              </Select>
+            )}
+          </Field>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button type="submit" variant="primary" loading={invite.isPending} disabled={!email.includes('@')}>Send invitation</Button>
+          </div>
+        </form>
+      )}
     </Dialog>
   )
 }
