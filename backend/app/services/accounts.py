@@ -32,9 +32,12 @@ from app.services import email as mail
 from app.services.auth import normalize_email, revoke_all_for_user
 
 EMAIL_OFF = AppError(
+    status.HTTP_503_SERVICE_UNAVAILABLE, "email_disabled", "E-mail is not configured on this server"
+)
+RESET_OFF = AppError(
     status.HTTP_503_SERVICE_UNAVAILABLE,
     "email_disabled",
-    "E-mail is not configured on this server — ask an administrator to reset your password",
+    "E-mail is not configured on this server — ask an administrator of your organization for help",
 )
 
 
@@ -143,7 +146,7 @@ def _recent_mails(db: Session, user: User, purpose: str) -> int:
 def request_reset(db: Session, request: Request, background: BackgroundTasks, email: str) -> None:
     s = get_settings()
     if not s.email_enabled:
-        raise EMAIL_OFF
+        raise RESET_OFF
     user = db.scalar(select(User).where(User.email == normalize_email(email)))
     if user is None or not user.is_active or _recent_mails(db, user, "reset") >= s.rate_limit_email_per_hour:
         return  # same answer either way: no account enumeration
